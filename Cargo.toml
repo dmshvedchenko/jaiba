@@ -1,0 +1,7 @@
+[package]
+name = "puma"
+version = "2026.1.0"
+edition = "2024"
+
+[dependencies]
+gpui = { git = "https://codeberg.org/GramEditor/gram" }

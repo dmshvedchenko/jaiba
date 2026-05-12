@@ -1,3 +1,0 @@
-# puma
-
-Offline password manager

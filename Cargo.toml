@@ -4,4 +4,5 @@ version = "2026.1.0"
 edition = "2024"
 
 [dependencies]
-gpui = { git = "https://codeberg.org/GramEditor/gram" }
+ratatui = "0.30.2"
+

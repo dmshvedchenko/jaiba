@@ -901,6 +901,7 @@ dependencies = [
 name = "puma"
 version = "2026.1.0"
 dependencies = [
+ "crossterm",
  "ratatui",
 ]
 

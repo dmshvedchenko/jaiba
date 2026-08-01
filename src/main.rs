@@ -1,18 +1,25 @@
 use std::io;
 
 use crossterm::{
-    event::{self, Event},
+    event::{self, Event, KeyCode},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{
+        disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    },
 };
 
 use ratatui::{
-    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
+    Frame, Terminal,
 };
+
+struct App {
+    password: String,
+    max_len: usize,
+}
 
 fn main() -> io::Result<()> {
     enable_raw_mode()?;
@@ -23,11 +30,36 @@ fn main() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    terminal.draw(|frame| {
-        draw_login(frame);
-    })?;
+    let mut app = App {
+        password: String::new(),
+        max_len: 0,
+    };
 
-    event::read()?;
+    loop {
+        terminal.draw(|frame| {
+            draw_login(frame, &mut app);
+        })?;
+
+        if let Event::Key(key) = event::read()? {
+            match key.code {
+                KeyCode::Char(c) => {
+                    if app.password.chars().count() < app.max_len {
+                        app.password.push(c);
+                    }
+                }
+
+                KeyCode::Backspace => {
+                    app.password.pop();
+                }
+
+                KeyCode::Esc => {
+                    break;
+                }
+
+                _ => {}
+            }
+        }
+    }
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -35,9 +67,10 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn draw_login(frame: &mut Frame) {
+fn draw_login(frame: &mut Frame, app: &mut App) {
     // Background
-    let background = Block::default().style(Style::default().bg(Color::Rgb(30, 30, 40)));
+    let background =
+        Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
 
     frame.render_widget(background, frame.area());
 
@@ -61,11 +94,25 @@ fn draw_login(frame: &mut Frame) {
         ])
         .split(vertical[1]);
 
-    let password = Block::default()
-        // .title("Password")
-        .borders(Borders::ALL)
-        // .style(Style::default().bg(Color::Rgb(45, 46, 67)));
-        .border_style(Style::default().fg(Color::Rgb(71, 73, 108)));
+    let input_area = horizontal[1];
 
-    frame.render_widget(password, horizontal[1]);
+    // Calculate available input characters
+    app.max_len = (input_area.width - 2) as usize;
+
+    // Mask password
+    let masked = "•".repeat(app.password.chars().count());
+
+    let input = Paragraph::new(masked).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
+    );
+
+    frame.render_widget(input, input_area);
+
+    // Keep cursor inside the box
+    let cursor_x = (input_area.x + 1 + app.password.chars().count() as u16)
+        .min(input_area.x + input_area.width - 2);
+
+    frame.set_cursor_position((cursor_x, input_area.y + 1));
 }

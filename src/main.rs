@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode};
@@ -7,6 +8,7 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, Cell, Padding, Paragraph, Row, Table, TableState},
 };
 
@@ -20,6 +22,8 @@ struct Entry {
     user: String,
     password: String,
     totp: String,
+    password_reuse_count: u32,
+    duplicate_user_count: u32,
 }
 
 struct App {
@@ -52,41 +56,55 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
             Entry {
                 name: "GitHub".into(),
                 user: "alice".into(),
-                password: "•••••".into(),
-                totp: "•••••".into(),
+                password: "hunter2".into(),
+                totp: "123456".into(),
+                password_reuse_count: 0,
+                duplicate_user_count: 0,
             },
             Entry {
-                name: "Google".into(),
-                user: "alice@gmail.com".into(),
-                password: "•••••".into(),
-                totp: "•••••".into(),
+                name: "GitLab".into(),
+                user: "aliceZ".into(),
+                password: "hunter2".into(),
+                totp: "654321".into(),
+                password_reuse_count: 0,
+                duplicate_user_count: 0,
             },
             Entry {
-                name: "Discord".into(),
-                user: "Alice".into(),
-                password: "•••••".into(),
-                totp: "--".into(),
+                name: "GitLab".into(),
+                user: "alice".into(),
+                password: "hunter".into(),
+                totp: "654321".into(),
+                password_reuse_count: 0,
+                duplicate_user_count: 0,
             },
             Entry {
                 name: "GitHub".into(),
                 user: "alice".into(),
-                password: "•••••".into(),
-                totp: "•••••".into(),
+                password: "hunter2".into(),
+                totp: "123456".into(),
+                password_reuse_count: 0,
+                duplicate_user_count: 0,
             },
             Entry {
-                name: "Google".into(),
-                user: "alice@gmail.com".into(),
-                password: "•••••".into(),
-                totp: "•••••".into(),
+                name: "GitLab".into(),
+                user: "aliceZ".into(),
+                password: "hunter2".into(),
+                totp: "654321".into(),
+                password_reuse_count: 0,
+                duplicate_user_count: 0,
             },
             Entry {
-                name: "Discord".into(),
-                user: "Alice".into(),
-                password: "•••••".into(),
-                totp: "--".into(),
+                name: "GitHub".into(),
+                user: "Mara".into(),
+                password: "huntero".into(),
+                totp: "654321".into(),
+                password_reuse_count: 0,
+                duplicate_user_count: 0,
             },
         ],
     };
+
+    calculate_warnings(&mut app.entries);
 
     loop {
         terminal.draw(|frame| {
@@ -195,25 +213,32 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 
     let query_row = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(1), Constraint::Fill(1), Constraint::Length(1)])
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Fill(1),
+            Constraint::Length(1),
+        ])
         .split(vertical[0]);
 
     let header = Row::new(["Name", "User", "Password", "TOTP"])
         .style(Style::new().bold().fg(Color::Rgb(96, 99, 142)))
         .bottom_margin(1);
 
-    let help =
-        Paragraph::new("  [u] cp_user  [p] cp_password  [t] cp_totp  [a] add_entry  [e] edit  [x] expand  ")
-            .style(Style::new().fg(Color::Rgb(203, 166, 247)));
+    let help = Paragraph::new(
+        "  [u]cp_user  [p]cp_password  [t]cp_totp  [a]add_entry  [e]edit  [x]expand  ",
+    )
+    .style(Style::new().fg(Color::Rgb(203, 166, 247)));
 
     frame.render_widget(help, vertical[2]);
 
     let rows = app.entries.iter().map(|entry| {
+        let user = masked_user(entry);
+
         Row::new([
-            Cell::from(format!("{} ", entry.name.as_str())),
-            Cell::from(format!("{} ", entry.user)),
-            Cell::from(format!("{} ", entry.password)),
-            Cell::from(format!("{} ", entry.totp)),
+            Cell::from(entry.name.as_str()),
+            Cell::from(user),
+            Cell::from(password),
+            Cell::from(entry.totp.as_str()),
         ])
     });
 
@@ -292,4 +317,52 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
 
         _ => {}
     }
+}
+
+fn calculate_warnings(entries: &mut Vec<Entry>) {
+    let mut password_counts: HashMap<String, u32> = HashMap::new();
+    let mut user_counts: HashMap<String, u32> = HashMap::new();
+
+    for entry in entries.iter() {
+        *password_counts.entry(entry.password.clone()).or_insert(0) += 1;
+        *user_counts.entry(entry.user.clone()).or_insert(0) += 1;
+    }
+
+    for entry in entries.iter_mut() {
+        entry.password_reuse_count = password_counts.get(&entry.password).copied().unwrap_or(0);
+
+        entry.duplicate_user_count = user_counts.get(&entry.user).copied().unwrap_or(0);
+    }
+}
+
+fn masked_password(entry: &Entry) -> Line<'_> {
+    let normal = Style::new().fg(Color::Rgb(216, 218, 234));
+    let warning = Style::new().fg(Color::Rgb(249, 226, 175));
+
+    let mut spans = vec![Span::styled("•••••", normal)];
+
+    if entry.password_reuse_count > 1 {
+        spans.push(Span::styled(
+            format!(" [{}]", entry.password_reuse_count),
+            warning,
+        ));
+    }
+
+    Line::from(spans)
+}
+
+fn masked_user(entry: &Entry) -> Line<'_> {
+    let normal = Style::new().fg(Color::Rgb(216, 218, 234));
+    let warning = Style::new().fg(Color::Rgb(249, 226, 175));
+
+    let mut spans = vec![Span::styled(entry.user.as_str(), normal)];
+
+    if entry.duplicate_user_count > 1 {
+        spans.push(Span::styled(
+            format!(" [{}]", entry.duplicate_user_count),
+            warning,
+        ));
+    }
+
+    Line::from(spans)
 }

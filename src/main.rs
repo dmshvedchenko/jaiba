@@ -7,11 +7,18 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Table},
 };
 
+enum Screen {
+    Login,
+    Table,
+}
+
 struct App {
+    screen: Screen,
     password: String,
+    query: String,
     max_len: usize,
 }
 
@@ -27,33 +34,26 @@ fn main() -> io::Result<()> {
 
 fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
     let mut app = App {
+        screen: Screen::Login,
         password: String::new(),
+        query: String::new(),
         max_len: 0,
     };
 
     loop {
-        terminal.draw(|frame| {
-            // draw_login(frame, &mut app);
-            draw_table(frame, &mut app);
+        terminal.draw(|frame| match app.screen {
+            Screen::Login => draw_login(frame, &mut app),
+            Screen::Table => draw_table(frame, &mut app),
         })?;
 
         if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char(c) => {
-                    if app.password.chars().count() < app.max_len {
-                        app.password.push(c);
-                    }
-                }
+            match app.screen {
+                Screen::Login => handle_login_input(&mut app, key.code),
+                Screen::Table => handle_table_input(&mut app, key.code),
+            }
 
-                KeyCode::Backspace => {
-                    app.password.pop();
-                }
-
-                KeyCode::Esc => {
-                    break;
-                }
-
-                _ => {}
+            if matches!(key.code, KeyCode::Esc) {
+                break;
             }
         }
     }
@@ -109,6 +109,29 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
     frame.set_cursor_position((cursor_x, input_area.y + 1));
 }
 
+fn handle_login_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Char(c) => {
+            if app.password.len() < app.max_len {
+                app.password.push(c);
+            }
+        }
+
+        KeyCode::Backspace => {
+            app.password.pop();
+        }
+
+        KeyCode::Enter => {
+            // TODO replace for actual password
+            if app.password == "aa" {
+                app.screen = Screen::Table;
+            }
+        }
+
+        _ => {}
+    }
+}
+
 fn draw_table(frame: &mut Frame, app: &mut App) {
     let background = Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
 
@@ -116,14 +139,10 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 
     let vertical = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Fill(1),
-        ])
+        .constraints([Constraint::Length(3), Constraint::Fill(1)])
         .split(frame.area());
 
-    let first_row = Layout::default()
+    let query_row = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Fill(1),
@@ -132,38 +151,38 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         ])
         .split(vertical[0]);
 
-    let table_header = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(2),
-            Constraint::Fill(2),
-            Constraint::Fill(1),
-            Constraint::Fill(1),
-            Constraint::Fill(1),
-        ])
-        .split(vertical[1]);
+    // let table = Table::default();
 
-    let table_body = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(2),
-            Constraint::Fill(2),
-            Constraint::Fill(1),
-            Constraint::Fill(1),
-            Constraint::Fill(1),
-        ])
-        .split(vertical[2]);
+    let query_area = query_row[0];
 
-    let query_area = first_row[0];
+    app.max_len = (query_area.width.saturating_sub(2)) as usize;
 
-    // Calculate available input characters
-    // app.max_len = (query_area.width - 2) as usize;
-
-    let input = Paragraph::new("").block(
+    let input = Paragraph::new(app.query.as_str()).block(
         Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
     );
 
+    frame.set_cursor_position((
+        query_area.x + 1 + app.query.chars().count() as u16,
+        query_area.y + 1,
+    ));
+
     frame.render_widget(input, query_area);
+}
+
+fn handle_table_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Char(c) => {
+            if app.query.len() < app.max_len {
+                app.query.push(c);
+            }
+        }
+
+        KeyCode::Backspace => {
+            app.query.pop();
+        }
+
+        _ => {}
+    }
 }

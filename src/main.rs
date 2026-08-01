@@ -7,7 +7,7 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, Table},
+    widgets::{Block, Borders, Paragraph, Row, Table, TableState},
 };
 
 enum Screen {
@@ -43,7 +43,7 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
     loop {
         terminal.draw(|frame| match app.screen {
             Screen::Login => draw_login(frame, &mut app),
-            Screen::Table => draw_table(frame, &mut app),
+            Screen::Table => draw_table(frame, &mut app, &mut table_state),
         })?;
 
         if let Event::Key(key) = event::read()? {
@@ -132,7 +132,7 @@ fn handle_login_input(app: &mut App, key: KeyCode) {
     }
 }
 
-fn draw_table(frame: &mut Frame, app: &mut App) {
+fn draw_table(frame: &mut Frame, app: &mut App, table_state: &mut TableState) {
     let background = Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
 
     frame.render_widget(background, frame.area());
@@ -151,7 +151,36 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         ])
         .split(vertical[0]);
 
-    // let table = Table::default();
+    let header = Row::new(["Name", "User", "Password", "TOTP", "Actions"])
+        .style(Style::new().bold())
+        .bottom_margin(1);
+
+    let rows = [
+        Row::new(["Name", "User", "Password", "TOTP", "Actions"]),
+        Row::new(["Name", "User", "Password", "TOTP", "Actions"]),
+        Row::new(["Name", "User", "Password", "TOTP", "Actions"]),
+    ];
+
+    let column_widths = [
+        Constraint::Percentage(30),
+        Constraint::Percentage(40),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+        Constraint::Percentage(10),
+    ];
+
+    let table = Table::new(rows, column_widths)
+        .header(header)
+        .column_spacing(1)
+        .style(Color::White)
+        .row_highlight_style(Style::new().on_black().bold())
+        .column_highlight_style(Color::Gray)
+        .cell_highlight_style(Style::new().reversed().yellow())
+        .highlight_symbol("🍴 ");
+
+    let table_area = query_row[1];
+
+    frame.render_stateful_widget(table, table_area, table_state);
 
     let query_area = query_row[0];
 

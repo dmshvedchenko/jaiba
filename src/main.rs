@@ -7,7 +7,6 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
-    text::Span,
     widgets::{Block, Borders, Cell, Padding, Paragraph, Row, Table, TableState},
 };
 
@@ -204,19 +203,17 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .bottom_margin(1);
 
     let help =
-        Paragraph::new("  [u]cp_user  [p]cp_password  [t]cp_totp  [a]add_entry  [e]edit  [x]expand  ")
+        Paragraph::new("  [u] cp_user  [p] cp_password  [t] cp_totp  [a] add_entry  [e] edit  [x] expand  ")
             .style(Style::new().fg(Color::Rgb(203, 166, 247)));
 
     frame.render_widget(help, vertical[2]);
 
-    let button_style = Style::new().fg(Color::White);
-
     let rows = app.entries.iter().map(|entry| {
         Row::new([
-            Cell::from(Span::styled(format!("{} ", entry.name.as_str()), button_style)),
-            Cell::from(Span::styled(format!("{} ", entry.user), button_style)),
-            Cell::from(Span::styled(format!("{} ", entry.password), button_style)),
-            Cell::from(Span::styled(format!("{} ", entry.totp), button_style)),
+            Cell::from(format!("{} ", entry.name.as_str())),
+            Cell::from(format!("{} ", entry.user)),
+            Cell::from(format!("{} ", entry.password)),
+            Cell::from(format!("{} ", entry.totp)),
         ])
     });
 

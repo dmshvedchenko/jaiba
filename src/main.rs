@@ -27,9 +27,8 @@ struct App {
     password: String,
     query: String,
     max_len: usize,
-
-    entries: Vec<Entry>,
     table_state: TableState,
+    entries: Vec<Entry>,
 }
 
 fn main() -> io::Result<()> {
@@ -49,6 +48,26 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
         query: String::new(),
         max_len: 0,
         table_state: TableState::default().with_selected(Some(0)),
+        entries: vec![
+            Entry {
+                name: "GitHub".into(),
+                user: "alice".into(),
+                password: "•••••".into(),
+                totp: "•••••".into(),
+            },
+            Entry {
+                name: "Google".into(),
+                user: "alice@gmail.com".into(),
+                password: "•••••".into(),
+                totp: "•••••".into(),
+            },
+            Entry {
+                name: "Discord".into(),
+                user: "Alice".into(),
+                password: "•••••".into(),
+                totp: "N/A".into(),
+            },
+        ],
     };
 
     loop {
@@ -155,20 +174,23 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 
     let query_row = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),
-        ])
+        .constraints([Constraint::Fill(1)])
         .split(vertical[0]);
 
     let header = Row::new(["Name", "User", "Password", "TOTP", "Actions"])
         .style(Style::new().bold().fg(Color::Rgb(96, 99, 142)))
         .bottom_margin(1);
 
-    let rows = [
-        Row::new(["Name", "User", "Password", "TOTP", "Actions"]),
-        Row::new(["Name", "User", "Password", "TOTP", "Actions"]),
-        Row::new(["Name", "User", "Password", "TOTP", "Actions"]),
-    ];
+    let rows = app.entries.iter().map(|entry| {
+        Row::new([
+            entry.name.as_str(),
+            entry.user.as_str(),
+            entry.password.as_str(),
+            entry.totp.as_str(),
+            "E  ↓", // Edit and show more, show more will open a collapsible box below
+        ])
+        // .bottom_margin(1)
+    });
 
     let column_widths = [
         Constraint::Percentage(25),

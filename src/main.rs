@@ -66,7 +66,7 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
                 name: "Discord".into(),
                 user: "Alice".into(),
                 password: "•••••".into(),
-                totp: "N/A".into(),
+                totp: "--".into(),
             },
             Entry {
                 name: "GitHub".into(),
@@ -84,7 +84,7 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
                 name: "Discord".into(),
                 user: "Alice".into(),
                 password: "•••••".into(),
-                totp: "N/A".into(),
+                totp: "--".into(),
             },
         ],
     };
@@ -196,7 +196,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 
     let query_row = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(2), Constraint::Fill(1), Constraint::Length(2)])
+        .constraints([Constraint::Length(1), Constraint::Fill(1), Constraint::Length(1)])
         .split(vertical[0]);
 
     let header = Row::new(["Name", "User", "Password", "TOTP"])
@@ -204,7 +204,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .bottom_margin(1);
 
     let help =
-        Paragraph::new("[u]cp_user  [p]cp_password  [t]cp_totp  [a]add_entry  [e]edit  [x]expand")
+        Paragraph::new("  [u]cp_user  [p]cp_password  [t]cp_totp  [a]add_entry  [e]edit  [x]expand  ")
             .style(Style::new().fg(Color::Rgb(203, 166, 247)));
 
     frame.render_widget(help, vertical[2]);
@@ -213,10 +213,10 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 
     let rows = app.entries.iter().map(|entry| {
         Row::new([
-            Cell::from(entry.name.as_str()),
-            Cell::from(Span::styled(format!(" {} ", entry.user), button_style)),
-            Cell::from(Span::styled(format!(" {} ", entry.password), button_style)),
-            Cell::from(Span::styled(format!(" {} ", entry.totp), button_style)),
+            Cell::from(Span::styled(format!("{} ", entry.name.as_str()), button_style)),
+            Cell::from(Span::styled(format!("{} ", entry.user), button_style)),
+            Cell::from(Span::styled(format!("{} ", entry.password), button_style)),
+            Cell::from(Span::styled(format!("{} ", entry.totp), button_style)),
         ])
     });
 

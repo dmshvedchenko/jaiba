@@ -1,10 +1,6 @@
 use std::io;
 
-use crossterm::{
-    event::{self, Event, KeyCode},
-    execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
+use crossterm::event::{self, Event, KeyCode};
 
 use ratatui::{
     Frame, Terminal,
@@ -20,29 +16,56 @@ struct App {
 }
 
 fn main() -> io::Result<()> {
-    enable_raw_mode()?;
+    let mut terminal = ratatui::init();
 
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    run(&mut terminal)?;
 
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    ratatui::restore();
 
-    run_login(&mut terminal)?;
+    Ok(())
+}
 
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
+    let mut app = App {
+        password: String::new(),
+        max_len: 0,
+    };
+
+    loop {
+        terminal.draw(|frame| {
+            // draw_login(frame, &mut app);
+            draw_table(frame, &mut app);
+        })?;
+
+        if let Event::Key(key) = event::read()? {
+            match key.code {
+                KeyCode::Char(c) => {
+                    if app.password.chars().count() < app.max_len {
+                        app.password.push(c);
+                    }
+                }
+
+                KeyCode::Backspace => {
+                    app.password.pop();
+                }
+
+                KeyCode::Esc => {
+                    break;
+                }
+
+                _ => {}
+            }
+        }
+    }
 
     Ok(())
 }
 
 fn draw_login(frame: &mut Frame, app: &mut App) {
-    // Background
     let background = Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
 
     frame.render_widget(background, frame.area());
 
-    // Center vertically
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -52,7 +75,6 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
         ])
         .split(frame.area());
 
-    // Center horizontally
     let horizontal = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -87,37 +109,61 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
     frame.set_cursor_position((cursor_x, input_area.y + 1));
 }
 
-fn run_login(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
-    let mut app = App {
-        password: String::new(),
-        max_len: 0,
-    };
+fn draw_table(frame: &mut Frame, app: &mut App) {
+    let background = Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
 
-    loop {
-        terminal.draw(|frame| {
-            draw_login(frame, &mut app);
-        })?;
+    frame.render_widget(background, frame.area());
 
-        if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char(c) => {
-                    if app.password.chars().count() < app.max_len {
-                        app.password.push(c);
-                    }
-                }
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .split(frame.area());
 
-                KeyCode::Backspace => {
-                    app.password.pop();
-                }
+    let first_row = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(50),
+            Constraint::Length(50),
+        ])
+        .split(vertical[0]);
 
-                KeyCode::Esc => {
-                    break;
-                }
+    let table_header = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(2),
+            Constraint::Fill(2),
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+        ])
+        .split(vertical[1]);
 
-                _ => {}
-            }
-        }
-    }
+    let table_body = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(2),
+            Constraint::Fill(2),
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+        ])
+        .split(vertical[2]);
 
-    Ok(())
+    let query_area = first_row[0];
+
+    // Calculate available input characters
+    // app.max_len = (query_area.width - 2) as usize;
+
+    let input = Paragraph::new("").block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
+    );
+
+    frame.render_widget(input, query_area);
 }

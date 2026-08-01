@@ -232,6 +232,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
     frame.render_widget(help, vertical[2]);
 
     let rows = app.entries.iter().map(|entry| {
+        let password = masked_password(entry);
         let user = masked_user(entry);
 
         Row::new([

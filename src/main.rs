@@ -30,36 +30,7 @@ fn main() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App {
-        password: String::new(),
-        max_len: 0,
-    };
-
-    loop {
-        terminal.draw(|frame| {
-            draw_login(frame, &mut app);
-        })?;
-
-        if let Event::Key(key) = event::read()? {
-            match key.code {
-                KeyCode::Char(c) => {
-                    if app.password.chars().count() < app.max_len {
-                        app.password.push(c);
-                    }
-                }
-
-                KeyCode::Backspace => {
-                    app.password.pop();
-                }
-
-                KeyCode::Esc => {
-                    break;
-                }
-
-                _ => {}
-            }
-        }
-    }
+    run_login(&mut terminal)?;
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -115,4 +86,41 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
         .min(input_area.x + input_area.width - 2);
 
     frame.set_cursor_position((cursor_x, input_area.y + 1));
+}
+
+fn run_login(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+) -> io::Result<()> {
+    let mut app = App {
+        password: String::new(),
+        max_len: 0,
+    };
+
+    loop {
+        terminal.draw(|frame| {
+            draw_login(frame, &mut app);
+        })?;
+
+        if let Event::Key(key) = event::read()? {
+            match key.code {
+                KeyCode::Char(c) => {
+                    if app.password.chars().count() < app.max_len {
+                        app.password.push(c);
+                    }
+                }
+
+                KeyCode::Backspace => {
+                    app.password.pop();
+                }
+
+                KeyCode::Esc => {
+                    break;
+                }
+
+                _ => {}
+            }
+        }
+    }
+
+    Ok(())
 }

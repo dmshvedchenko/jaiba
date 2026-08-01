@@ -15,11 +15,21 @@ enum Screen {
     Table,
 }
 
+struct Entry {
+    name: String,
+    user: String,
+    password: String,
+    totp: String,
+}
+
 struct App {
     screen: Screen,
     password: String,
     query: String,
     max_len: usize,
+
+    entries: Vec<Entry>,
+    table_state: TableState,
 }
 
 fn main() -> io::Result<()> {
@@ -38,12 +48,13 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
         password: String::new(),
         query: String::new(),
         max_len: 0,
+        table_state: TableState::default().with_selected(Some(0)),
     };
 
     loop {
         terminal.draw(|frame| match app.screen {
             Screen::Login => draw_login(frame, &mut app),
-            Screen::Table => draw_table(frame, &mut app, &mut table_state),
+            Screen::Table => draw_table(frame, &mut app),
         })?;
 
         if let Event::Key(key) = event::read()? {
@@ -132,7 +143,7 @@ fn handle_login_input(app: &mut App, key: KeyCode) {
     }
 }
 
-fn draw_table(frame: &mut Frame, app: &mut App, table_state: &mut TableState) {
+fn draw_table(frame: &mut Frame, app: &mut App) {
     let background = Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
 
     frame.render_widget(background, frame.area());
@@ -146,13 +157,11 @@ fn draw_table(frame: &mut Frame, app: &mut App, table_state: &mut TableState) {
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Fill(1),
-            Constraint::Length(50),
-            Constraint::Length(50),
         ])
         .split(vertical[0]);
 
     let header = Row::new(["Name", "User", "Password", "TOTP", "Actions"])
-        .style(Style::new().bold())
+        .style(Style::new().bold().fg(Color::Rgb(96, 99, 142)))
         .bottom_margin(1);
 
     let rows = [
@@ -162,25 +171,25 @@ fn draw_table(frame: &mut Frame, app: &mut App, table_state: &mut TableState) {
     ];
 
     let column_widths = [
-        Constraint::Percentage(30),
-        Constraint::Percentage(40),
+        Constraint::Percentage(25),
+        Constraint::Percentage(35),
+        Constraint::Percentage(15),
         Constraint::Percentage(10),
-        Constraint::Percentage(10),
-        Constraint::Percentage(10),
+        Constraint::Percentage(15),
     ];
 
     let table = Table::new(rows, column_widths)
         .header(header)
         .column_spacing(1)
-        .style(Color::White)
+        .style(Color::Rgb(216, 218, 234))
         .row_highlight_style(Style::new().on_black().bold())
         .column_highlight_style(Color::Gray)
         .cell_highlight_style(Style::new().reversed().yellow())
-        .highlight_symbol("🍴 ");
+        .highlight_symbol("→ ");
 
-    let table_area = query_row[1];
+    let table_area = vertical[1];
 
-    frame.render_stateful_widget(table, table_area, table_state);
+    frame.render_stateful_widget(table, table_area, &mut app.table_state);
 
     let query_area = query_row[0];
 
@@ -201,6 +210,8 @@ fn draw_table(frame: &mut Frame, app: &mut App, table_state: &mut TableState) {
 }
 
 fn handle_table_input(app: &mut App, key: KeyCode) {
+    let row_count = 3;
+
     match key {
         KeyCode::Char(c) => {
             if app.query.len() < app.max_len {
@@ -210,6 +221,18 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
 
         KeyCode::Backspace => {
             app.query.pop();
+        }
+
+        KeyCode::Down => {
+            let selected = app.table_state.selected().unwrap_or(0);
+            let next = (selected + 1).min(row_count - 1);
+            app.table_state.select(Some(next));
+        }
+
+        KeyCode::Up => {
+            let selected = app.table_state.selected().unwrap_or(0);
+            let prev = selected.saturating_sub(1);
+            app.table_state.select(Some(prev));
         }
 
         _ => {}

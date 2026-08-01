@@ -7,7 +7,8 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, Row, Table, TableState},
+    text::Span,
+    widgets::{Block, Borders, Cell, Padding, Paragraph, Row, Table, TableState},
 };
 
 enum Screen {
@@ -67,13 +68,38 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
                 password: "•••••".into(),
                 totp: "N/A".into(),
             },
+            Entry {
+                name: "GitHub".into(),
+                user: "alice".into(),
+                password: "•••••".into(),
+                totp: "•••••".into(),
+            },
+            Entry {
+                name: "Google".into(),
+                user: "alice@gmail.com".into(),
+                password: "•••••".into(),
+                totp: "•••••".into(),
+            },
+            Entry {
+                name: "Discord".into(),
+                user: "Alice".into(),
+                password: "•••••".into(),
+                totp: "N/A".into(),
+            },
         ],
     };
 
     loop {
-        terminal.draw(|frame| match app.screen {
-            Screen::Login => draw_login(frame, &mut app),
-            Screen::Table => draw_table(frame, &mut app),
+        terminal.draw(|frame| {
+            frame.render_widget(
+                Block::default().style(Style::default().bg(Color::Rgb(30, 30, 46))),
+                frame.area(),
+            );
+
+            match app.screen {
+                Screen::Login => draw_login(frame, &mut app),
+                Screen::Table => draw_table(frame, &mut app),
+            }
         })?;
 
         if let Event::Key(key) = event::read()? {
@@ -92,10 +118,6 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
 }
 
 fn draw_login(frame: &mut Frame, app: &mut App) {
-    let background = Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
-
-    frame.render_widget(background, frame.area());
-
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -163,40 +185,45 @@ fn handle_login_input(app: &mut App, key: KeyCode) {
 }
 
 fn draw_table(frame: &mut Frame, app: &mut App) {
-    let background = Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
-
-    frame.render_widget(background, frame.area());
-
     let vertical = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Fill(1)])
+        .constraints([
+            Constraint::Length(3), // search
+            Constraint::Fill(1),   // table
+            Constraint::Length(1), // help bar
+        ])
         .split(frame.area());
 
     let query_row = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Fill(1)])
+        .constraints([Constraint::Length(2), Constraint::Fill(1), Constraint::Length(2)])
         .split(vertical[0]);
 
-    let header = Row::new(["Name", "User", "Password", "TOTP", "Actions"])
+    let header = Row::new(["Name", "User", "Password", "TOTP"])
         .style(Style::new().bold().fg(Color::Rgb(96, 99, 142)))
         .bottom_margin(1);
 
+    let help =
+        Paragraph::new("[u]cp_user  [p]cp_password  [t]cp_totp  [a]add_entry  [e]edit  [x]expand")
+            .style(Style::new().fg(Color::Rgb(203, 166, 247)));
+
+    frame.render_widget(help, vertical[2]);
+
+    let button_style = Style::new().fg(Color::White);
+
     let rows = app.entries.iter().map(|entry| {
         Row::new([
-            entry.name.as_str(),
-            entry.user.as_str(),
-            entry.password.as_str(),
-            entry.totp.as_str(),
-            "E  ↓", // Edit and show more, show more will open a collapsible box below
+            Cell::from(entry.name.as_str()),
+            Cell::from(Span::styled(format!(" {} ", entry.user), button_style)),
+            Cell::from(Span::styled(format!(" {} ", entry.password), button_style)),
+            Cell::from(Span::styled(format!(" {} ", entry.totp), button_style)),
         ])
-        // .bottom_margin(1)
     });
 
     let column_widths = [
-        Constraint::Percentage(25),
-        Constraint::Percentage(35),
+        Constraint::Percentage(30),
+        Constraint::Percentage(40),
         Constraint::Percentage(15),
-        Constraint::Percentage(10),
         Constraint::Percentage(15),
     ];
 
@@ -213,18 +240,19 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 
     frame.render_stateful_widget(table, table_area, &mut app.table_state);
 
-    let query_area = query_row[0];
+    let query_area = query_row[1];
 
-    app.max_len = (query_area.width.saturating_sub(2)) as usize;
+    app.max_len = query_area.width.saturating_sub(4) as usize;
 
     let input = Paragraph::new(app.query.as_str()).block(
         Block::default()
             .borders(Borders::ALL)
+            .padding(Padding::horizontal(1))
             .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
     );
 
     frame.set_cursor_position((
-        query_area.x + 1 + app.query.chars().count() as u16,
+        query_area.x + 2 + app.query.chars().count() as u16,
         query_area.y + 1,
     ));
 
@@ -232,7 +260,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 }
 
 fn handle_table_input(app: &mut App, key: KeyCode) {
-    let row_count = 3;
+    let row_count = app.entries.len();
 
     match key {
         KeyCode::Char(c) => {
@@ -246,12 +274,20 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
         }
 
         KeyCode::Down => {
+            if row_count == 0 {
+                return;
+            }
+
             let selected = app.table_state.selected().unwrap_or(0);
             let next = (selected + 1).min(row_count - 1);
             app.table_state.select(Some(next));
         }
 
         KeyCode::Up => {
+            if row_count == 0 {
+                return;
+            }
+
             let selected = app.table_state.selected().unwrap_or(0);
             let prev = selected.saturating_sub(1);
             app.table_state.select(Some(prev));

@@ -3,17 +3,15 @@ use std::io;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
-    terminal::{
-        disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-    },
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 
 use ratatui::{
+    Frame, Terminal,
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
-    Frame, Terminal,
 };
 
 struct App {
@@ -40,8 +38,7 @@ fn main() -> io::Result<()> {
 
 fn draw_login(frame: &mut Frame, app: &mut App) {
     // Background
-    let background =
-        Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
+    let background = Block::default().style(Style::default().bg(Color::Rgb(37, 39, 57)));
 
     frame.render_widget(background, frame.area());
 
@@ -73,7 +70,7 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
     // Mask password
     let masked = "•".repeat(app.password.chars().count());
 
-    let input = Paragraph::new(masked).block(
+    let input = Paragraph::new(masked).alignment(Alignment::Center).block(
         Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
@@ -82,15 +79,15 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
     frame.render_widget(input, input_area);
 
     // Keep cursor inside the box
-    let cursor_x = (input_area.x + 1 + app.password.chars().count() as u16)
-        .min(input_area.x + input_area.width - 2);
+    let text_width = app.password.chars().count() as u16;
+    let inner_width = input_area.width - 1;
+
+    let cursor_x = input_area.x + (inner_width.saturating_sub(text_width) / 2) + text_width;
 
     frame.set_cursor_position((cursor_x, input_area.y + 1));
 }
 
-fn run_login(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-) -> io::Result<()> {
+fn run_login(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
     let mut app = App {
         password: String::new(),
         max_len: 0,

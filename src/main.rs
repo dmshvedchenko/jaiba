@@ -315,9 +315,9 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),           // search
-            Constraint::Fill(1),             // table
-            Constraint::Length(help_height), // help bar
+            Constraint::Length(3),
+            Constraint::Fill(1),
+            Constraint::Length(help_height),
         ])
         .split(full_area);
 

@@ -11,6 +11,42 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Padding, Paragraph, Row, Table, TableState},
 };
 
+struct Theme {
+    background: Color,
+
+    text: Color,
+    text_dim: Color,
+    warning: Color,
+
+    border: Color,
+    header: Color,
+
+    help: Color,
+
+    selected_fg: Color,
+    selected_bg: Color,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self {
+            background: Color::Rgb(30, 30, 46),
+
+            text: Color::Rgb(205, 214, 244),
+            text_dim: Color::Rgb(96, 99, 142),
+            warning: Color::Rgb(249, 226, 175),
+
+            border: Color::Rgb(71, 73, 108),
+            header: Color::Rgb(96, 99, 142),
+
+            help: Color::Rgb(203, 166, 247),
+
+            selected_fg: Color::Yellow,
+            selected_bg: Color::Black,
+        }
+    }
+}
+
 enum Screen {
     Login,
     Table,
@@ -35,6 +71,7 @@ struct App {
     table_state: TableState,
     entries: Vec<Entry>,
     filtered: Vec<usize>,
+    theme: Theme,
 }
 
 impl App {
@@ -91,6 +128,7 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
         password: String::new(),
         query: String::new(),
         max_len: 0,
+        theme: Theme::default(),
         table_state: TableState::default().with_selected(Some(0)),
         entries: vec![
             Entry {
@@ -134,7 +172,7 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
     loop {
         terminal.draw(|frame| {
             frame.render_widget(
-                Block::default().style(Style::default().bg(Color::Rgb(30, 30, 46))),
+                Block::default().style(Style::default().bg(app.theme.background)),
                 frame.area(),
             );
 
@@ -189,7 +227,7 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
     let input = Paragraph::new(masked).alignment(Alignment::Center).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
+            .border_style(Style::default().fg(app.theme.border)),
     );
 
     frame.render_widget(input, input_area);
@@ -293,7 +331,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .split(vertical[0]);
 
     let header = Row::new(["Name", "User", "Password", "TOTP", "Last Modify"])
-        .style(Style::new().bold().fg(Color::Rgb(96, 99, 142)))
+        .style(Style::new().bold().fg(app.theme.header))
         .bottom_margin(1);
 
     let help_text = help_lines
@@ -302,14 +340,14 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let help = Paragraph::new(help_text).style(Style::new().fg(Color::Rgb(203, 166, 247)));
+    let help = Paragraph::new(help_text).style(Style::new().fg(app.theme.help));
 
     frame.render_widget(help, vertical[2]);
 
     let rows = app.filtered.iter().map(|&i| {
         let entry = &app.entries[i];
-        let password = masked_password(entry);
-        let user = masked_user(entry);
+        let password = masked_password(entry, &app.theme);
+        let user = masked_user(entry, &app.theme);
 
         Row::new([
             Cell::from(entry.name.as_str()),
@@ -418,9 +456,9 @@ fn calculate_warnings(entries: &mut Vec<Entry>) {
     }
 }
 
-fn masked_password(entry: &Entry) -> Line<'_> {
-    let normal = Style::new().fg(Color::Rgb(205, 214, 244));
-    let warning = Style::new().fg(Color::Rgb(249, 226, 175));
+fn masked_password<'a>(entry: &'a Entry, theme: &Theme) -> Line<'a> {
+    let normal = Style::new().fg(theme.text);
+    let warning = Style::new().fg(theme.warning);
 
     let mut spans = vec![Span::styled("•••••", normal)];
 
@@ -434,9 +472,9 @@ fn masked_password(entry: &Entry) -> Line<'_> {
     Line::from(spans)
 }
 
-fn masked_user(entry: &Entry) -> Line<'_> {
-    let normal = Style::new().fg(Color::Rgb(205, 214, 244));
-    let warning = Style::new().fg(Color::Rgb(249, 226, 175));
+fn masked_user<'a>(entry: &'a Entry, theme: &Theme) -> Line<'a> {
+    let normal = Style::new().fg(theme.text);
+    let warning = Style::new().fg(theme.warning);
 
     let mut spans = vec![Span::styled(entry.user.as_str(), normal)];
 

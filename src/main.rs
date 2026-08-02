@@ -33,6 +33,45 @@ struct App {
     max_len: usize,
     table_state: TableState,
     entries: Vec<Entry>,
+    filtered: Vec<usize>,
+}
+
+impl App {
+    fn compute_filtered(&self) -> Vec<usize> {
+        let query = self.query.to_lowercase();
+
+        let mut indices: Vec<usize> = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| {
+                query.is_empty()
+                    || entry.name.to_lowercase().contains(&query)
+                    || entry.user.to_lowercase().contains(&query)
+            })
+            .map(|(i, _)| i)
+            .collect();
+
+        indices.sort_by(|&a, &b| {
+            let ea = &self.entries[a];
+            let eb = &self.entries[b];
+
+            eb.password_reuse_count
+                .cmp(&ea.password_reuse_count)
+                .then_with(|| eb.duplicate_user_count.cmp(&ea.duplicate_user_count))
+                .then_with(|| ea.name.to_lowercase().cmp(&eb.name.to_lowercase()))
+        });
+
+        indices
+    }
+
+    fn refresh_filter(&mut self) {
+        self.filtered = self.compute_filtered();
+
+        let count = self.filtered.len();
+        self.table_state
+            .select(if count == 0 { None } else { Some(0) });
+    }
 }
 
 fn main() -> io::Result<()> {
@@ -102,9 +141,12 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
                 duplicate_user_count: 0,
             },
         ],
+        filtered: Vec::new(),
     };
 
+    // Populate reuse/duplicate counts, then build the initial filtered view.
     calculate_warnings(&mut app.entries);
+    app.refresh_filter();
 
     loop {
         terminal.draw(|frame| {
@@ -225,13 +267,14 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .bottom_margin(1);
 
     let help = Paragraph::new(
-        "  [u]cp_user  [p]cp_password  [t]cp_totp  [a]add_entry  [e]edit  [x]expand  ",
+        "  [:u]cp_user  [:p]cp_password  [:t]cp_totp  [:a]add_entry  [:e]edit  [enter]preview  [:q]quit  ",
     )
     .style(Style::new().fg(Color::Rgb(203, 166, 247)));
 
     frame.render_widget(help, vertical[2]);
 
-    let rows = app.entries.iter().map(|entry| {
+    let rows = app.filtered.iter().map(|&i| {
+        let entry = &app.entries[i];
         let password = masked_password(entry);
         let user = masked_user(entry);
 
@@ -244,9 +287,9 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
     });
 
     let column_widths = [
-        Constraint::Percentage(30),
+        Constraint::Percentage(25),
         Constraint::Percentage(40),
-        Constraint::Percentage(15),
+        Constraint::Percentage(20),
         Constraint::Percentage(15),
     ];
 
@@ -283,20 +326,22 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 }
 
 fn handle_table_input(app: &mut App, key: KeyCode) {
-    let row_count = app.entries.len();
-
     match key {
         KeyCode::Char(c) => {
             if app.query.len() < app.max_len {
                 app.query.push(c);
+                app.refresh_filter();
             }
         }
 
         KeyCode::Backspace => {
             app.query.pop();
+            app.refresh_filter();
         }
 
         KeyCode::Down => {
+            let row_count = app.filtered.len();
+
             if row_count == 0 {
                 return;
             }
@@ -307,6 +352,8 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
         }
 
         KeyCode::Up => {
+            let row_count = app.filtered.len();
+
             if row_count == 0 {
                 return;
             }
@@ -330,7 +377,10 @@ fn calculate_warnings(entries: &mut Vec<Entry>) {
     }
 
     for entry in entries.iter_mut() {
-        entry.password_reuse_count = password_counts.get(&entry.password).copied().unwrap_or(0);
+        entry.password_reuse_count = password_counts
+            .get(&entry.password)
+            .copied()
+            .unwrap_or(0);
 
         entry.duplicate_user_count = user_counts.get(&entry.user).copied().unwrap_or(0);
     }

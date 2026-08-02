@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
-    io,
+    fs, io,
+    path::PathBuf,
     time::{Duration, Instant},
 };
 
@@ -16,41 +17,123 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Padding, Paragraph, Row, Table, TableState},
 };
 
-// ------------------ Types
+use serde::Deserialize;
+
+// ------------------ Theme
 
 struct Theme {
     background: Color,
-
     text: Color,
-    // text_dim: Color,
     warning: Color,
-
+    error: Color,
+    success: Color,
     border: Color,
     header: Color,
-
-    help: Color,
-    // selected_fg: Color,
-    // selected_bg: Color,
+    accent: Color,
+    selection_fg: Color,
+    selection_bg: Color,
 }
 
 impl Default for Theme {
     fn default() -> Self {
+        // Catppuccin Mocha, used if ~/.config/puma/theme.toml is missing or invalid.
         Self {
             background: Color::Rgb(30, 30, 46),
-
             text: Color::Rgb(205, 214, 244),
-            // text_dim: Color::Rgb(96, 99, 142),
             warning: Color::Rgb(249, 226, 175),
-
-            border: Color::Rgb(71, 73, 108),
-            header: Color::Rgb(96, 99, 142),
-
-            help: Color::Rgb(203, 166, 247),
-            // selected_fg: Color::Yellow,
-            // selected_bg: Color::Black,
+            error: Color::Rgb(243, 139, 168),
+            success: Color::Rgb(166, 227, 161),
+            border: Color::Rgb(69, 71, 90),
+            header: Color::Rgb(147, 153, 178),
+            accent: Color::Rgb(203, 166, 247),
+            selection_fg: Color::Rgb(30, 30, 46),
+            selection_bg: Color::Rgb(137, 180, 250),
         }
     }
 }
+
+#[derive(Deserialize)]
+pub struct ThemeConfig {
+    pub name: String,
+    pub colors: ThemeColors,
+}
+
+#[derive(Deserialize)]
+pub struct ThemeColors {
+    pub background: String,
+    pub text: String,
+
+    pub border: String,
+    pub header: String,
+
+    pub accent: String,
+
+    pub warning: String,
+    pub error: String,
+    pub success: String,
+
+    pub selection_fg: String,
+    pub selection_bg: String,
+}
+
+impl TryFrom<ThemeConfig> for Theme {
+    type Error = anyhow::Error;
+
+    fn try_from(cfg: ThemeConfig) -> Result<Self, Self::Error> {
+        Ok(Self {
+            background: parse_hex(&cfg.colors.background)?,
+            text: parse_hex(&cfg.colors.text)?,
+
+            border: parse_hex(&cfg.colors.border)?,
+            header: parse_hex(&cfg.colors.header)?,
+
+            accent: parse_hex(&cfg.colors.accent)?,
+
+            warning: parse_hex(&cfg.colors.warning)?,
+            error: parse_hex(&cfg.colors.error)?,
+            success: parse_hex(&cfg.colors.success)?,
+
+            selection_fg: parse_hex(&cfg.colors.selection_fg)?,
+            selection_bg: parse_hex(&cfg.colors.selection_bg)?,
+        })
+    }
+}
+
+fn parse_hex(hex: &str) -> anyhow::Result<Color> {
+    let hex = hex.strip_prefix('#').unwrap_or(hex);
+
+    if hex.len() != 6 {
+        anyhow::bail!("expected 6 hex digits");
+    }
+
+    let r = u8::from_str_radix(&hex[0..2], 16)?;
+    let g = u8::from_str_radix(&hex[2..4], 16)?;
+    let b = u8::from_str_radix(&hex[4..6], 16)?;
+
+    Ok(Color::Rgb(r, g, b))
+}
+
+/// Expands a leading `~/` using $HOME. `fs::read_to_string` won't do this on its own
+/// since there's no shell involved to interpret it.
+fn expand_tilde(path: &str) -> PathBuf {
+    if let Some(rest) = path.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            return PathBuf::from(home).join(rest);
+        }
+    }
+    PathBuf::from(path)
+}
+
+/// Loads the theme from ~/.config/puma/theme.toml. Callers should fall back to
+/// `Theme::default()` if this fails (missing file, bad toml, bad hex, etc).
+fn load_theme() -> anyhow::Result<Theme> {
+    let path = expand_tilde("~/.config/puma/theme.toml");
+    let text = fs::read_to_string(path)?;
+    let config: ThemeConfig = toml::from_str(&text)?;
+    Theme::try_from(config)
+}
+
+// ------------------ Types
 
 enum Screen {
     Login,
@@ -161,12 +244,16 @@ fn main() -> io::Result<()> {
 }
 
 fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
+    // Fall back to the built-in Catppuccin Mocha default if the config is missing/invalid,
+    // so a bad or absent theme.toml never prevents the app from starting.
+    let theme = load_theme().unwrap_or_default();
+
     let mut app = App {
         screen: Screen::Login,
         password: String::new(),
         query: String::new(),
         max_len: 0,
-        theme: Theme::default(),
+        theme,
         table_state: TableState::default().with_selected(Some(0)),
         entries: vec![
             Entry {
@@ -417,7 +504,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         // Replace the help text with the latest status message.
         Paragraph::new(format!("  {status}")).style(Style::new().fg(app.theme.warning))
     } else {
-        Paragraph::new(help_text).style(Style::new().fg(app.theme.help))
+        Paragraph::new(help_text).style(Style::new().fg(app.theme.accent))
     };
 
     frame.render_widget(help, vertical[2]);
@@ -447,10 +534,13 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
     let table = Table::new(rows, column_widths)
         .header(header)
         .column_spacing(1)
-        .style(Color::Rgb(205, 214, 244))
-        .row_highlight_style(Style::new().on_black().bold())
-        .column_highlight_style(Color::Gray)
-        .cell_highlight_style(Style::new().reversed().yellow())
+        .style(Style::new().fg(app.theme.text))
+        .row_highlight_style(
+            Style::new()
+                .fg(app.theme.selection_fg)
+                .bg(app.theme.selection_bg)
+                .bold(),
+        )
         .highlight_symbol("→ ");
 
     let table_area = vertical[1];
@@ -477,7 +567,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
             Block::default()
                 .borders(Borders::ALL)
                 .padding(Padding::horizontal(1))
-                .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
+                .border_style(Style::default().fg(app.theme.border)),
         );
 
     frame.set_cursor_position((

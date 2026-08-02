@@ -15,16 +15,15 @@ struct Theme {
     background: Color,
 
     text: Color,
-    text_dim: Color,
+    // text_dim: Color,
     warning: Color,
 
     border: Color,
     header: Color,
 
     help: Color,
-
-    selected_fg: Color,
-    selected_bg: Color,
+    // selected_fg: Color,
+    // selected_bg: Color,
 }
 
 impl Default for Theme {
@@ -33,16 +32,15 @@ impl Default for Theme {
             background: Color::Rgb(30, 30, 46),
 
             text: Color::Rgb(205, 214, 244),
-            text_dim: Color::Rgb(96, 99, 142),
+            // text_dim: Color::Rgb(96, 99, 142),
             warning: Color::Rgb(249, 226, 175),
 
             border: Color::Rgb(71, 73, 108),
             header: Color::Rgb(96, 99, 142),
 
             help: Color::Rgb(203, 166, 247),
-
-            selected_fg: Color::Yellow,
-            selected_bg: Color::Black,
+            // selected_fg: Color::Yellow,
+            // selected_bg: Color::Black,
         }
     }
 }
@@ -153,8 +151,8 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
             },
             Entry {
                 name: "GitHub".into(),
-                user: "yalice".into(),
-                password: "hunter2".into(),
+                user: "alice".into(),
+                password: "hunter".into(),
                 url: "https://www.youtube.com/watch?v=yqGR9b9OItM".into(),
                 date_last_modify: "12/12/2024".into(),
                 totp: "123456".into(),
@@ -420,7 +418,13 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
             }
 
             let selected = app.table_state.selected().unwrap_or(0);
-            let next = (selected + 1).min(row_count - 1);
+
+            let next = if selected >= row_count - 1 {
+                0
+            } else {
+                selected + 1
+            };
+
             app.table_state.select(Some(next));
         }
 
@@ -432,7 +436,13 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
             }
 
             let selected = app.table_state.selected().unwrap_or(0);
-            let prev = selected.saturating_sub(1);
+
+            let prev = if selected == 0 {
+                row_count - 1
+            } else {
+                selected - 1
+            };
+
             app.table_state.select(Some(prev));
         }
 

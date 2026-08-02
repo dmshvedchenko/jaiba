@@ -1,4 +1,8 @@
-use std::{collections::HashMap, io};
+use std::{
+    collections::HashMap,
+    io,
+    time::{Duration, Instant},
+};
 
 use arboard::Clipboard;
 use crossterm::event::{self, Event, KeyCode};
@@ -71,11 +75,29 @@ struct App {
     entries: Vec<Entry>,
     filtered: Vec<usize>,
     theme: Theme,
+
+    // ':' enters command mode; chars accumulate into command_buffer until Esc or a match.
     command_mode: bool,
     command_buffer: String,
+
+    // Feedback for the last action, shown in the help bar until the next command.
     status: Option<String>,
+
+    // Kept alive for the app's lifetime so clipboard content stays servable to other apps.
     clipboard: Option<Clipboard>,
+
+    // Tracks the pending 15s auto-clear for the last copy.
+    clipboard_timer: Option<ClipboardTimer>,
+
     should_quit: bool,
+}
+
+const CLIPBOARD_TTL: Duration = Duration::from_secs(15);
+
+struct ClipboardTimer {
+    label: String,
+    expected: String,
+    clear_at: Instant,
 }
 
 impl App {
@@ -176,12 +198,18 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
         command_mode: false,
         command_buffer: String::new(),
         status: None,
+        // Retried lazily on first copy if this fails at startup (e.g. no X server yet).
         clipboard: Clipboard::new().ok(),
+        clipboard_timer: None,
         should_quit: false,
     };
 
+    // Populate reuse/duplicate counts, then build the initial filtered view.
     calculate_warnings(&mut app.entries);
     app.refresh_filter();
+
+    // Wake periodically even with no input, to tick the countdown and auto-clear.
+    const TICK_RATE: Duration = Duration::from_millis(200);
 
     loop {
         terminal.draw(|frame| {
@@ -196,12 +224,16 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
             }
         })?;
 
-        if let Event::Key(key) = event::read()? {
-            match app.screen {
-                Screen::Login => handle_login_input(&mut app, key.code),
-                Screen::Table => handle_table_input(&mut app, key.code),
+        if event::poll(TICK_RATE)? {
+            if let Event::Key(key) = event::read()? {
+                match app.screen {
+                    Screen::Login => handle_login_input(&mut app, key.code),
+                    Screen::Table => handle_table_input(&mut app, key.code),
+                }
             }
         }
+
+        maybe_clear_clipboard(&mut app);
 
         if app.should_quit {
             break;
@@ -294,6 +326,7 @@ const HELP_ITEMS: &[&str] = &[
     "[:s] settings",
 ];
 
+// Command name -> action, as pairs so command_mode can do prefix matching.
 const COMMANDS: &[(&str, Command)] = &[
     ("u", Command::CopyUser),
     ("p", Command::CopyPassword),
@@ -355,23 +388,63 @@ fn execute_command(app: &mut App, cmd: Command) {
     }
 }
 
+/// Copies `text`, starts a 15s auto-clear timer, and reports the outcome via `app.status`.
 fn copy_and_report(app: &mut App, label: &str, text: &str) {
     let result = match app.clipboard.as_mut() {
         Some(clipboard) => clipboard.set_text(text),
-        None => match Clipboard::new() {
-            Ok(mut clipboard) => {
-                let result = clipboard.set_text(text);
-                app.clipboard = Some(clipboard);
-                result
+        None => {
+            // Wasn't available at startup — try to connect now.
+            match Clipboard::new() {
+                Ok(mut clipboard) => {
+                    let result = clipboard.set_text(text);
+                    app.clipboard = Some(clipboard);
+                    result
+                }
+                Err(err) => Err(err),
             }
-            Err(err) => Err(err),
-        },
+        }
     };
 
-    app.status = Some(match result {
-        Ok(()) => format!("Copied {label}"),
-        Err(err) => format!("Failed to copy {label}: {err}"),
-    });
+    match result {
+        Ok(()) => {
+            app.clipboard_timer = Some(ClipboardTimer {
+                label: label.to_string(),
+                expected: text.to_string(),
+                clear_at: Instant::now() + CLIPBOARD_TTL,
+            });
+            app.status = None;
+        }
+        Err(err) => {
+            app.clipboard_timer = None;
+            app.status = Some(format!("Failed to copy {label}: {err}"));
+        }
+    }
+}
+
+/// Called every tick; clears the clipboard once the 15s window elapses, if it still holds our value.
+fn maybe_clear_clipboard(app: &mut App) {
+    let Some(timer) = app.clipboard_timer.as_ref() else {
+        return;
+    };
+
+    if Instant::now() < timer.clear_at {
+        return;
+    }
+
+    let expected = std::mem::take(&mut app.clipboard_timer).unwrap().expected;
+
+    if let Some(clipboard) = app.clipboard.as_mut() {
+        let holds_ours = matches!(clipboard.get_text(), Ok(current) if current == expected);
+
+        if holds_ours {
+            if let Err(err) = clipboard.clear() {
+                app.status = Some(format!("Couldn't clear clipboard: {err}"));
+                return;
+            }
+        }
+    }
+
+    app.status = Some("Clipboard cleared".to_string());
 }
 
 fn cp_user(app: &mut App) {
@@ -486,7 +559,21 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let help = if let Some(status) = &app.status {
+    let help = if let Some(timer) = &app.clipboard_timer {
+        // Recomputed every draw so the countdown ticks down smoothly.
+        let remaining = timer
+            .clear_at
+            .saturating_duration_since(Instant::now())
+            .as_secs()
+            + 1; // round up so it doesn't flash "0s" before the tick that clears it
+
+        Paragraph::new(format!(
+            "  Copied {} :: clearing in {remaining}s",
+            timer.label
+        ))
+        .style(Style::new().fg(app.theme.warning))
+    } else if let Some(status) = &app.status {
+        // Replace the help text with the latest status message.
         Paragraph::new(format!("  {status}")).style(Style::new().fg(app.theme.warning))
     } else {
         Paragraph::new(help_text).style(Style::new().fg(app.theme.help))
@@ -533,6 +620,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 
     app.max_len = query_area.width.saturating_sub(4) as usize;
 
+    // While in command mode, show ":<buffer>" instead of the search query.
     let (input_text, input_style) = if app.command_mode {
         (
             format!(":{}", app.command_buffer),

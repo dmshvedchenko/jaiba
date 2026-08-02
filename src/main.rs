@@ -1,5 +1,6 @@
 use std::{collections::HashMap, io};
 
+use arboard::Clipboard;
 use crossterm::event::{self, Event, KeyCode};
 
 use ratatui::{
@@ -70,6 +71,11 @@ struct App {
     entries: Vec<Entry>,
     filtered: Vec<usize>,
     theme: Theme,
+    command_mode: bool,
+    command_buffer: String,
+    status: Option<String>,
+    clipboard: Option<Clipboard>,
+    should_quit: bool,
 }
 
 impl App {
@@ -107,6 +113,12 @@ impl App {
         let count = self.filtered.len();
         self.table_state
             .select(if count == 0 { None } else { Some(0) });
+    }
+
+    fn selected_entry(&self) -> Option<&Entry> {
+        let selected = self.table_state.selected()?;
+        let entry_idx = *self.filtered.get(selected)?;
+        self.entries.get(entry_idx)
     }
 }
 
@@ -161,9 +173,13 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
             },
         ],
         filtered: Vec::new(),
+        command_mode: false,
+        command_buffer: String::new(),
+        status: None,
+        clipboard: Clipboard::new().ok(),
+        should_quit: false,
     };
 
-    // Populate reuse/duplicate counts, then build the initial filtered view.
     calculate_warnings(&mut app.entries);
     app.refresh_filter();
 
@@ -185,10 +201,10 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
                 Screen::Login => handle_login_input(&mut app, key.code),
                 Screen::Table => handle_table_input(&mut app, key.code),
             }
+        }
 
-            if matches!(key.code, KeyCode::Esc) {
-                break;
-            }
+        if app.should_quit {
+            break;
         }
     }
 
@@ -258,6 +274,10 @@ fn handle_login_input(app: &mut App, key: KeyCode) {
             }
         }
 
+        KeyCode::Esc => {
+            app.should_quit = true;
+        }
+
         _ => {}
     }
 }
@@ -273,6 +293,134 @@ const HELP_ITEMS: &[&str] = &[
     "[:q] quit",
     "[:s] settings",
 ];
+
+const COMMANDS: &[(&str, Command)] = &[
+    ("u", Command::CopyUser),
+    ("p", Command::CopyPassword),
+    ("t", Command::CopyTotp),
+    ("r", Command::CopyUrl),
+    ("a", Command::AddEntry),
+    ("e", Command::EditEntry),
+    ("q", Command::Quit),
+    ("s", Command::Settings),
+];
+
+#[derive(Clone, Copy)]
+enum Command {
+    CopyUser,
+    CopyPassword,
+    CopyTotp,
+    CopyUrl,
+    AddEntry,
+    EditEntry,
+    Quit,
+    Settings,
+}
+
+enum CommandMatch {
+    Exact(Command),
+    Prefix,
+    Invalid,
+}
+
+fn match_command(buffer: &str) -> CommandMatch {
+    let mut exact = None;
+    let mut is_prefix = false;
+
+    for (name, cmd) in COMMANDS {
+        if *name == buffer {
+            exact = Some(*cmd);
+        } else if name.starts_with(buffer) {
+            is_prefix = true;
+        }
+    }
+
+    match (exact, is_prefix) {
+        (Some(cmd), _) => CommandMatch::Exact(cmd),
+        (None, true) => CommandMatch::Prefix,
+        (None, false) => CommandMatch::Invalid,
+    }
+}
+
+fn execute_command(app: &mut App, cmd: Command) {
+    match cmd {
+        Command::CopyUser => cp_user(app),
+        Command::CopyPassword => cp_password(app),
+        Command::CopyTotp => cp_totp(app),
+        Command::CopyUrl => cp_url(app),
+        Command::AddEntry => add_entry(app),
+        Command::EditEntry => edit_entry(app),
+        Command::Quit => app.should_quit = true,
+        Command::Settings => open_settings(app),
+    }
+}
+
+fn copy_and_report(app: &mut App, label: &str, text: &str) {
+    let result = match app.clipboard.as_mut() {
+        Some(clipboard) => clipboard.set_text(text),
+        None => match Clipboard::new() {
+            Ok(mut clipboard) => {
+                let result = clipboard.set_text(text);
+                app.clipboard = Some(clipboard);
+                result
+            }
+            Err(err) => Err(err),
+        },
+    };
+
+    app.status = Some(match result {
+        Ok(()) => format!("Copied {label}"),
+        Err(err) => format!("Failed to copy {label}: {err}"),
+    });
+}
+
+fn cp_user(app: &mut App) {
+    if let Some(entry) = app.selected_entry() {
+        let user = entry.user.clone();
+        copy_and_report(app, "user", &user);
+    }
+}
+
+fn cp_password(app: &mut App) {
+    if let Some(entry) = app.selected_entry() {
+        let password = entry.password.clone();
+        copy_and_report(app, "password", &password);
+    }
+}
+
+fn cp_totp(app: &mut App) {
+    if let Some(entry) = app.selected_entry() {
+        let totp = entry.totp.clone();
+        copy_and_report(app, "TOTP code", &totp);
+    }
+}
+
+fn cp_url(app: &mut App) {
+    if let Some(entry) = app.selected_entry() {
+        let url = entry.url.clone();
+        copy_and_report(app, "URL", &url);
+    }
+}
+
+fn add_entry(_app: &mut App) {
+    // TODO: open an "add entry" form/screen
+}
+
+fn edit_entry(app: &mut App) {
+    if let Some(_entry) = app.selected_entry() {
+        // TODO: open an "edit entry" form/screen for _entry
+    }
+}
+
+fn preview_entry(app: &mut App) {
+    if let Some(_entry) = app.selected_entry() {
+        // TODO: show entry detail popup for _entry
+    }
+}
+
+fn open_settings(_app: &mut App) {
+    // TODO: open settings screen
+}
 
 fn wrap_help_items(items: &[&str], width: u16) -> Vec<String> {
     let width = width as usize;
@@ -338,7 +486,11 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let help = Paragraph::new(help_text).style(Style::new().fg(app.theme.help));
+    let help = if let Some(status) = &app.status {
+        Paragraph::new(format!("  {status}")).style(Style::new().fg(app.theme.warning))
+    } else {
+        Paragraph::new(help_text).style(Style::new().fg(app.theme.help))
+    };
 
     frame.render_widget(help, vertical[2]);
 
@@ -381,15 +533,26 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 
     app.max_len = query_area.width.saturating_sub(4) as usize;
 
-    let input = Paragraph::new(app.query.as_str()).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .padding(Padding::horizontal(1))
-            .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
-    );
+    let (input_text, input_style) = if app.command_mode {
+        (
+            format!(":{}", app.command_buffer),
+            Style::default().fg(app.theme.warning),
+        )
+    } else {
+        (app.query.clone(), Style::default().fg(app.theme.text))
+    };
+
+    let input = Paragraph::new(input_text.as_str())
+        .style(input_style)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .padding(Padding::horizontal(1))
+                .border_style(Style::default().fg(Color::Rgb(71, 73, 108))),
+        );
 
     frame.set_cursor_position((
-        query_area.x + 2 + app.query.chars().count() as u16,
+        query_area.x + 2 + input_text.chars().count() as u16,
         query_area.y + 1,
     ));
 
@@ -397,8 +560,21 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
 }
 
 fn handle_table_input(app: &mut App, key: KeyCode) {
+    if app.command_mode {
+        handle_command_input(app, key);
+        return;
+    }
+
     match key {
+        KeyCode::Char(':') => {
+            app.status = None;
+            app.command_mode = true;
+            app.command_buffer.clear();
+        }
+
         KeyCode::Char(c) => {
+            app.status = None;
+
             if app.query.len() < app.max_len {
                 app.query.push(c);
                 app.refresh_filter();
@@ -406,8 +582,14 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
         }
 
         KeyCode::Backspace => {
+            app.status = None;
             app.query.pop();
             app.refresh_filter();
+        }
+
+        KeyCode::Enter => {
+            app.status = None;
+            preview_entry(app);
         }
 
         KeyCode::Down => {
@@ -416,6 +598,8 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
             if row_count == 0 {
                 return;
             }
+
+            app.status = None;
 
             let selected = app.table_state.selected().unwrap_or(0);
 
@@ -435,6 +619,8 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
                 return;
             }
 
+            app.status = None;
+
             let selected = app.table_state.selected().unwrap_or(0);
 
             let prev = if selected == 0 {
@@ -444,6 +630,46 @@ fn handle_table_input(app: &mut App, key: KeyCode) {
             };
 
             app.table_state.select(Some(prev));
+        }
+
+        _ => {}
+    }
+}
+
+fn handle_command_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Esc => {
+            app.command_mode = false;
+            app.command_buffer.clear();
+        }
+
+        KeyCode::Backspace => {
+            app.command_buffer.pop();
+
+            if app.command_buffer.is_empty() {
+                app.command_mode = false;
+            }
+        }
+
+        KeyCode::Char(c) => {
+            app.command_buffer.push(c);
+
+            match match_command(&app.command_buffer) {
+                CommandMatch::Exact(cmd) => {
+                    app.command_mode = false;
+                    app.command_buffer.clear();
+                    execute_command(app, cmd);
+                }
+
+                CommandMatch::Prefix => {
+                    // Keep collecting characters.
+                }
+
+                CommandMatch::Invalid => {
+                    app.command_mode = false;
+                    app.command_buffer.clear();
+                }
+            }
         }
 
         _ => {}

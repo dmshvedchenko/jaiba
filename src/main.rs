@@ -243,15 +243,61 @@ fn handle_login_input(app: &mut App, key: KeyCode) {
     }
 }
 
+const HELP_ITEMS: &[&str] = &[
+    "[:u] cp_user",
+    "[:p] cp_password",
+    "[:t] cp_totp",
+    "[:a] add_entry",
+    "[:e] edit_entry",
+    "[enter] preview_entry",
+    "[:q] quit",
+    "[:s] settings",
+];
+
+fn wrap_help_items(items: &[&str], width: u16) -> Vec<String> {
+    let width = width as usize;
+    let mut lines: Vec<String> = Vec::new();
+    let mut current = String::new();
+
+    for item in items {
+        let candidate_len = if current.is_empty() {
+            item.len()
+        } else {
+            current.len() + 2 + item.len()
+        };
+
+        if !current.is_empty() && candidate_len > width {
+            lines.push(std::mem::take(&mut current));
+        }
+
+        if !current.is_empty() {
+            current.push_str("  ");
+        }
+        current.push_str(item);
+    }
+
+    if !current.is_empty() || lines.is_empty() {
+        lines.push(current);
+    }
+
+    lines
+}
+
 fn draw_table(frame: &mut Frame, app: &mut App) {
+    let full_area = frame.area();
+
+    let help_width = full_area.width.saturating_sub(2);
+    let help_lines = wrap_help_items(HELP_ITEMS, help_width);
+    let help_height = help_lines.len() as u16;
+
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // search
-            Constraint::Fill(1),   // table
-            Constraint::Length(1), // help bar
+            Constraint::Length(3),           // search
+            Constraint::Fill(1),             // table
+            Constraint::Length(help_height), // help bar, grows/shrinks on resize
         ])
-        .split(frame.area());
+        .split(full_area);
 
     let query_row = Layout::default()
         .direction(Direction::Horizontal)
@@ -266,10 +312,13 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .style(Style::new().bold().fg(Color::Rgb(96, 99, 142)))
         .bottom_margin(1);
 
-    let help = Paragraph::new(
-        "  [:u]cp_user  [:p]cp_password  [:t]cp_totp  [:a]add_entry  [:e]edit  [enter]preview  [:q]quit  ",
-    )
-    .style(Style::new().fg(Color::Rgb(203, 166, 247)));
+    let help_text = help_lines
+        .iter()
+        .map(|line| format!("  {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let help = Paragraph::new(help_text).style(Style::new().fg(Color::Rgb(203, 166, 247)));
 
     frame.render_widget(help, vertical[2]);
 

@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::io;
+use std::{collections::HashMap, io};
 
 use crossterm::event::{self, Event, KeyCode};
 
@@ -21,7 +20,9 @@ struct Entry {
     name: String,
     user: String,
     password: String,
+    url: String,
     totp: String,
+    date_last_modify: String,
     password_reuse_count: u32,
     duplicate_user_count: u32,
 }
@@ -96,47 +97,29 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
                 name: "GitHub".into(),
                 user: "alice".into(),
                 password: "hunter2".into(),
+                url: "https://www.youtube.com/watch?v=yqGR9b9OItM".into(),
+                date_last_modify: "12/12/2024".into(),
                 totp: "123456".into(),
                 password_reuse_count: 0,
                 duplicate_user_count: 0,
             },
             Entry {
-                name: "GitLab".into(),
-                user: "aliceZ".into(),
-                password: "hunter2".into(),
-                totp: "654321".into(),
-                password_reuse_count: 0,
-                duplicate_user_count: 0,
-            },
-            Entry {
-                name: "GitLab".into(),
-                user: "alice".into(),
-                password: "hunter".into(),
-                totp: "654321".into(),
-                password_reuse_count: 0,
-                duplicate_user_count: 0,
-            },
-            Entry {
                 name: "GitHub".into(),
-                user: "alice".into(),
+                user: "malice".into(),
                 password: "hunter2".into(),
+                url: "https://www.youtube.com/watch?v=yqGR9b9OItM".into(),
+                date_last_modify: "12/12/2024".into(),
                 totp: "123456".into(),
                 password_reuse_count: 0,
                 duplicate_user_count: 0,
             },
             Entry {
-                name: "GitLab".into(),
-                user: "aliceZ".into(),
-                password: "hunter2".into(),
-                totp: "654321".into(),
-                password_reuse_count: 0,
-                duplicate_user_count: 0,
-            },
-            Entry {
                 name: "GitHub".into(),
-                user: "Mara".into(),
-                password: "huntero".into(),
-                totp: "654321".into(),
+                user: "yalice".into(),
+                password: "hunter2".into(),
+                url: "https://www.youtube.com/watch?v=yqGR9b9OItM".into(),
+                date_last_modify: "12/12/2024".into(),
+                totp: "123456".into(),
                 password_reuse_count: 0,
                 duplicate_user_count: 0,
             },
@@ -247,6 +230,7 @@ const HELP_ITEMS: &[&str] = &[
     "[:u] cp_user",
     "[:p] cp_password",
     "[:t] cp_totp",
+    "[:r] cp_url",
     "[:a] add_entry",
     "[:e] edit_entry",
     "[enter] preview_entry",
@@ -295,7 +279,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         .constraints([
             Constraint::Length(3),           // search
             Constraint::Fill(1),             // table
-            Constraint::Length(help_height), // help bar, grows/shrinks on resize
+            Constraint::Length(help_height), // help bar
         ])
         .split(full_area);
 
@@ -308,7 +292,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         ])
         .split(vertical[0]);
 
-    let header = Row::new(["Name", "User", "Password", "TOTP"])
+    let header = Row::new(["Name", "User", "Password", "TOTP", "Last Modify"])
         .style(Style::new().bold().fg(Color::Rgb(96, 99, 142)))
         .bottom_margin(1);
 
@@ -332,20 +316,22 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
             Cell::from(user),
             Cell::from(password),
             Cell::from(entry.totp.as_str()),
+            Cell::from(entry.date_last_modify.as_str()),
         ])
     });
 
     let column_widths = [
         Constraint::Percentage(25),
-        Constraint::Percentage(40),
-        Constraint::Percentage(20),
+        Constraint::Percentage(35),
+        Constraint::Percentage(15),
+        Constraint::Percentage(10),
         Constraint::Percentage(15),
     ];
 
     let table = Table::new(rows, column_widths)
         .header(header)
         .column_spacing(1)
-        .style(Color::Rgb(216, 218, 234))
+        .style(Color::Rgb(205, 214, 244))
         .row_highlight_style(Style::new().on_black().bold())
         .column_highlight_style(Color::Gray)
         .cell_highlight_style(Style::new().reversed().yellow())
@@ -426,17 +412,14 @@ fn calculate_warnings(entries: &mut Vec<Entry>) {
     }
 
     for entry in entries.iter_mut() {
-        entry.password_reuse_count = password_counts
-            .get(&entry.password)
-            .copied()
-            .unwrap_or(0);
+        entry.password_reuse_count = password_counts.get(&entry.password).copied().unwrap_or(0);
 
         entry.duplicate_user_count = user_counts.get(&entry.user).copied().unwrap_or(0);
     }
 }
 
 fn masked_password(entry: &Entry) -> Line<'_> {
-    let normal = Style::new().fg(Color::Rgb(216, 218, 234));
+    let normal = Style::new().fg(Color::Rgb(205, 214, 244));
     let warning = Style::new().fg(Color::Rgb(249, 226, 175));
 
     let mut spans = vec![Span::styled("•••••", normal)];
@@ -452,7 +435,7 @@ fn masked_password(entry: &Entry) -> Line<'_> {
 }
 
 fn masked_user(entry: &Entry) -> Line<'_> {
-    let normal = Style::new().fg(Color::Rgb(216, 218, 234));
+    let normal = Style::new().fg(Color::Rgb(205, 214, 244));
     let warning = Style::new().fg(Color::Rgb(249, 226, 175));
 
     let mut spans = vec![Span::styled(entry.user.as_str(), normal)];

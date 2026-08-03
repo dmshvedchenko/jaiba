@@ -1,11 +1,17 @@
 use std::time::Instant;
 
-struct ClipboardTimer {
-    label: String,
-    expected: String,
-    clear_at: Instant,
+use arboard::Clipboard;
+
+use crate::app::App;
+
+pub struct ClipboardTimer {
+    pub label: String,
+    pub expected: String,
+    pub clear_at: Instant,
 }
 
+/// Copies `text`, starts a config.clipboard_timeout auto-clear timer, and reports the
+/// outcome via `app.status`.
 fn copy_and_report(app: &mut App, label: &str, text: &str) {
     let result = match app.clipboard.as_mut() {
         Some(clipboard) => clipboard.set_text(text),
@@ -38,6 +44,7 @@ fn copy_and_report(app: &mut App, label: &str, text: &str) {
     }
 }
 
+/// Called every tick; clears the clipboard once the configured window elapses, if it still holds our value.
 pub fn maybe_clear_clipboard(app: &mut App) {
     let Some(timer) = app.clipboard_timer.as_ref() else {
         return;
@@ -63,28 +70,28 @@ pub fn maybe_clear_clipboard(app: &mut App) {
     app.status = Some("Clipboard cleared".to_string());
 }
 
-fn cp_user(app: &mut App) {
+pub fn cp_user(app: &mut App) {
     if let Some(entry) = app.selected_entry() {
         let user = entry.user.clone();
         copy_and_report(app, "user", &user);
     }
 }
 
-fn cp_password(app: &mut App) {
+pub fn cp_password(app: &mut App) {
     if let Some(entry) = app.selected_entry() {
         let password = entry.password.clone();
         copy_and_report(app, "password", &password);
     }
 }
 
-fn cp_totp(app: &mut App) {
+pub fn cp_totp(app: &mut App) {
     if let Some(entry) = app.selected_entry() {
         let totp = entry.totp.clone();
         copy_and_report(app, "TOTP code", &totp);
     }
 }
 
-fn cp_url(app: &mut App) {
+pub fn cp_url(app: &mut App) {
     if let Some(entry) = app.selected_entry() {
         let url = entry.url.clone();
         copy_and_report(app, "URL", &url);

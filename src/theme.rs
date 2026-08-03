@@ -1,14 +1,39 @@
+use std::fs;
+
+use anyhow::Context;
+use ratatui::style::Color;
+use serde::Deserialize;
+
+use crate::util::expand_tilde;
+
 pub struct Theme {
-    background: Color,
-    text: Color,
-    warning: Color,
-    error: Color,
-    success: Color,
-    border: Color,
-    header: Color,
-    accent: Color,
-    selection_fg: Color,
-    selection_bg: Color,
+    pub background: Color,
+    pub text: Color,
+    pub warning: Color,
+    pub error: Color,
+    pub success: Color,
+    pub border: Color,
+    pub header: Color,
+    pub accent: Color,
+    pub selection_fg: Color,
+    pub selection_bg: Color,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self {
+            background: Color::Rgb(30, 30, 46),
+            text: Color::Rgb(205, 214, 244),
+            warning: Color::Rgb(249, 226, 175),
+            error: Color::Rgb(243, 139, 168),
+            success: Color::Rgb(166, 227, 161),
+            border: Color::Rgb(69, 71, 90),
+            header: Color::Rgb(147, 153, 178),
+            accent: Color::Rgb(203, 166, 247),
+            selection_fg: Color::Rgb(30, 30, 46),
+            selection_bg: Color::Rgb(137, 180, 250),
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -35,23 +60,6 @@ pub struct ThemeColors {
     pub selection_bg: String,
 }
 
-impl Default for Theme {
-    fn default() -> Self {
-        Self {
-            background: Color::Rgb(30, 30, 46),
-            text: Color::Rgb(205, 214, 244),
-            warning: Color::Rgb(249, 226, 175),
-            error: Color::Rgb(243, 139, 168),
-            success: Color::Rgb(166, 227, 161),
-            border: Color::Rgb(69, 71, 90),
-            header: Color::Rgb(147, 153, 178),
-            accent: Color::Rgb(203, 166, 247),
-            selection_fg: Color::Rgb(30, 30, 46),
-            selection_bg: Color::Rgb(137, 180, 250),
-        }
-    }
-}
-
 impl TryFrom<ThemeConfig> for Theme {
     type Error = anyhow::Error;
 
@@ -75,13 +83,6 @@ impl TryFrom<ThemeConfig> for Theme {
     }
 }
 
-pub fn load_theme() -> anyhow::Result<Theme> {
-    let path = expand_tilde("~/.config/puma/theme.toml");
-    let text = fs::read_to_string(path)?;
-    let config: ThemeConfig = toml::from_str(&text)?;
-    Theme::try_from(config)
-}
-
 fn parse_hex(hex: &str) -> anyhow::Result<Color> {
     let hex = hex.strip_prefix('#').unwrap_or(hex);
 
@@ -94,4 +95,36 @@ fn parse_hex(hex: &str) -> anyhow::Result<Color> {
     let b = u8::from_str_radix(&hex[4..6], 16)?;
 
     Ok(Color::Rgb(r, g, b))
+}
+
+pub fn load_theme(name: Option<&str>) -> anyhow::Result<Theme> {
+    let name = name.ok_or_else(|| anyhow::anyhow!("no theme set in config.toml"))?;
+
+    let config = find_theme(name)?;
+    Theme::try_from(config)
+}
+
+fn find_theme(name: &str) -> anyhow::Result<ThemeConfig> {
+    let dir = expand_tilde("~/.config/jaiba/themes");
+
+    let entries = fs::read_dir(&dir).with_context(|| format!("couldn't read {}", dir.display()))?;
+
+    for entry in entries {
+        let path = entry?.path();
+
+        if path.extension().and_then(|ext| ext.to_str()) != Some("toml") {
+            continue;
+        }
+
+        let text = fs::read_to_string(&path)?;
+        let Ok(config) = toml::from_str::<ThemeConfig>(&text) else {
+            continue;
+        };
+
+        if config.name.eq_ignore_ascii_case(name) {
+            return Ok(config);
+        }
+    }
+
+    anyhow::bail!("no theme named \"{name}\" found in {}", dir.display())
 }

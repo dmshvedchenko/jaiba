@@ -1,4 +1,13 @@
-pub fn draw(frame: &mut Frame, app: &mut App) {
+use ratatui::{
+    Frame,
+    layout::{Alignment, Constraint, Direction, Layout},
+    style::Style,
+    widgets::{Block, Borders, Paragraph},
+};
+
+use crate::app::App;
+
+pub fn draw_login(frame: &mut Frame, app: &mut App) {
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -55,31 +64,4 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let cursor_x = input_area.x + (inner_width.saturating_sub(text_width) / 2) + text_width;
 
     frame.set_cursor_position((cursor_x, input_area.y + 1));
-}
-
-pub fn handle_input(app: &mut App, key: KeyCode) {
-    match key {
-        KeyCode::Char(c) => {
-            app.login_error = None;
-
-            if app.password.len() < app.max_len {
-                app.password.push(c);
-            }
-        }
-
-        KeyCode::Backspace => {
-            app.login_error = None;
-            app.password.pop();
-        }
-
-        KeyCode::Enter => {
-            attempt_unlock(app);
-        }
-
-        KeyCode::Esc => {
-            app.should_quit = true;
-        }
-
-        _ => {}
-    }
 }

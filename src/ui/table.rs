@@ -1,3 +1,17 @@
+use std::time::Instant;
+
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout},
+    style::Style,
+    text::{Line, Span},
+    widgets::{Block, Borders, Cell, Padding, Paragraph, Row, Table},
+};
+
+use crate::app::App;
+use crate::db::Entry;
+use crate::theme::Theme;
+
 const HELP_ITEMS: &[&str] = &[
     "[:u] cp_user",
     "[:p] cp_password",
@@ -38,7 +52,39 @@ fn wrap_help_items(items: &[&str], width: u16) -> Vec<String> {
     lines
 }
 
-pub fn draw(frame: &mut Frame, app: &mut App) {
+fn masked_password<'a>(entry: &'a Entry, theme: &Theme) -> Line<'a> {
+    let normal = Style::new().fg(theme.text);
+    let warning = Style::new().fg(theme.warning);
+
+    let mut spans = vec![Span::styled("•••••", normal)];
+
+    if entry.password_reuse_count > 1 {
+        spans.push(Span::styled(
+            format!(" [{}]", entry.password_reuse_count),
+            warning,
+        ));
+    }
+
+    Line::from(spans)
+}
+
+fn masked_user<'a>(entry: &'a Entry, theme: &Theme) -> Line<'a> {
+    let normal = Style::new().fg(theme.text);
+    let warning = Style::new().fg(theme.warning);
+
+    let mut spans = vec![Span::styled(entry.user.as_str(), normal)];
+
+    if entry.duplicate_user_count > 1 {
+        spans.push(Span::styled(
+            format!(" [{}]", entry.duplicate_user_count),
+            warning,
+        ));
+    }
+
+    Line::from(spans)
+}
+
+pub fn draw_table(frame: &mut Frame, app: &mut App) {
     let full_area = frame.area();
 
     let help_width = full_area.width.saturating_sub(2);
@@ -160,81 +206,4 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     ));
 
     frame.render_widget(input, query_area);
-}
-
-pub fn handle_input(app: &mut App, key: KeyCode) {
-    if app.command_mode {
-        handle_command_input(app, key);
-        return;
-    }
-
-    match key {
-        KeyCode::Char(':') => {
-            app.status = None;
-            app.command_mode = true;
-            app.command_buffer.clear();
-        }
-
-        KeyCode::Char(c) => {
-            app.status = None;
-
-            if app.query.len() < app.max_len {
-                app.query.push(c);
-                app.refresh_filter();
-            }
-        }
-
-        KeyCode::Backspace => {
-            app.status = None;
-            app.query.pop();
-            app.refresh_filter();
-        }
-
-        KeyCode::Enter => {
-            app.status = None;
-            preview_entry(app);
-        }
-
-        KeyCode::Down => {
-            let row_count = app.filtered.len();
-
-            if row_count == 0 {
-                return;
-            }
-
-            app.status = None;
-
-            let selected = app.table_state.selected().unwrap_or(0);
-
-            let next = if selected >= row_count - 1 {
-                0
-            } else {
-                selected + 1
-            };
-
-            app.table_state.select(Some(next));
-        }
-
-        KeyCode::Up => {
-            let row_count = app.filtered.len();
-
-            if row_count == 0 {
-                return;
-            }
-
-            app.status = None;
-
-            let selected = app.table_state.selected().unwrap_or(0);
-
-            let prev = if selected == 0 {
-                row_count - 1
-            } else {
-                selected - 1
-            };
-
-            app.table_state.select(Some(prev));
-        }
-
-        _ => {}
-    }
 }

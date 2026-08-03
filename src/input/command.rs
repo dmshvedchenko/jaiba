@@ -1,3 +1,18 @@
+use crossterm::event::KeyCode;
+
+use crate::app::App;
+use crate::clipboard::{cp_password, cp_totp, cp_url, cp_user};
+
+const COMMANDS: &[(&str, Command)] = &[
+    ("u", Command::CopyUser),
+    ("p", Command::CopyPassword),
+    ("t", Command::CopyTotp),
+    ("r", Command::CopyUrl),
+    ("a", Command::AddEntry),
+    ("q", Command::Quit),
+    ("s", Command::Settings),
+];
+
 #[derive(Clone, Copy)]
 enum Command {
     CopyUser,
@@ -14,16 +29,6 @@ enum CommandMatch {
     Prefix,
     Invalid,
 }
-
-const COMMANDS: &[(&str, Command)] = &[
-    ("u", Command::CopyUser),
-    ("p", Command::CopyPassword),
-    ("t", Command::CopyTotp),
-    ("r", Command::CopyUrl),
-    ("a", Command::AddEntry),
-    ("q", Command::Quit),
-    ("s", Command::Settings),
-];
 
 fn match_command(buffer: &str) -> CommandMatch {
     let mut exact = None;
@@ -44,7 +49,7 @@ fn match_command(buffer: &str) -> CommandMatch {
     }
 }
 
-fn handle_command_input(app: &mut App, key: KeyCode) {
+pub fn handle_command_input(app: &mut App, key: KeyCode) {
     match key {
         KeyCode::Esc => {
             app.command_mode = false;
@@ -94,4 +99,18 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::Quit => app.should_quit = true,
         Command::Settings => open_settings(app),
     }
+}
+
+fn add_entry(_app: &mut App) {
+    // TODO: open an "add entry" form/screen
+}
+
+pub fn preview_entry(app: &mut App) {
+    if let Some(_entry) = app.selected_entry() {
+        // TODO: show entry detail popup for _entry
+    }
+}
+
+fn open_settings(_app: &mut App) {
+    // TODO: open settings screen
 }

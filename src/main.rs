@@ -1,12 +1,14 @@
 use std::{
     collections::HashMap,
     fs, io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use arboard::Clipboard;
 use crossterm::event::{self, Event, KeyCode};
+use keepass::{Database, DatabaseKey};
 
 use ratatui::{
     Frame, Terminal,
@@ -133,6 +135,55 @@ fn load_theme() -> anyhow::Result<Theme> {
     Theme::try_from(config)
 }
 
+// ------------------ Config
+
+struct Config {
+    // None means no database configured yet; login will show an error saying so.
+    default_database: Option<PathBuf>,
+    auto_lock: Duration,
+    clipboard_timeout: Duration,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            default_database: None,
+            auto_lock: Duration::from_secs(300),
+            clipboard_timeout: Duration::from_secs(15),
+        }
+    }
+}
+
+#[derive(Deserialize, Default)]
+struct ConfigFile {
+    default_database: Option<String>,
+    auto_lock: Option<u64>,
+    clipboard_timeout: Option<u64>,
+}
+
+/// Loads ~/.config/puma/config.toml. Callers should fall back to `Config::default()`
+/// if this fails (missing file, bad toml).
+fn load_config() -> anyhow::Result<Config> {
+    let path = expand_tilde("~/.config/puma/config.toml");
+    let text =
+        fs::read_to_string(&path).with_context(|| format!("couldn't read {}", path.display()))?;
+    let raw: ConfigFile = toml::from_str(&text)?;
+
+    let defaults = Config::default();
+
+    Ok(Config {
+        default_database: raw.default_database.map(|s| expand_tilde(&s)),
+        auto_lock: raw
+            .auto_lock
+            .map(Duration::from_secs)
+            .unwrap_or(defaults.auto_lock),
+        clipboard_timeout: raw
+            .clipboard_timeout
+            .map(Duration::from_secs)
+            .unwrap_or(defaults.clipboard_timeout),
+    })
+}
+
 // ------------------ Types
 
 enum Screen {
@@ -162,6 +213,14 @@ struct App {
     entries: Vec<Entry>,
     filtered: Vec<usize>,
     theme: Theme,
+    config: Config,
+
+    // Shown under the password box on the login screen (bad password, no db configured, etc).
+    login_error: Option<String>,
+
+    // Reset on every keypress; if it's been idle longer than config.auto_lock while
+    // unlocked, we wipe the decrypted entries and drop back to the login screen.
+    last_activity: Instant,
 
     // ':' enters command mode; chars accumulate into command_buffer until Esc or a match.
     command_mode: bool,
@@ -173,13 +232,11 @@ struct App {
     // Kept alive for the app's lifetime so clipboard content stays servable to other apps.
     clipboard: Option<Clipboard>,
 
-    // Tracks the pending 15s auto-clear for the last copy.
+    // Tracks the pending auto-clear (config.clipboard_timeout) for the last copy.
     clipboard_timer: Option<ClipboardTimer>,
 
     should_quit: bool,
 }
-
-const CLIPBOARD_TTL: Duration = Duration::from_secs(15);
 
 struct ClipboardTimer {
     label: String,
@@ -244,9 +301,10 @@ fn main() -> io::Result<()> {
 }
 
 fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
-    // Fall back to the built-in Catppuccin Mocha default if the config is missing/invalid,
-    // so a bad or absent theme.toml never prevents the app from starting.
+    // Fall back to built-in defaults if either config file is missing/invalid, so a bad
+    // or absent theme.toml / config.toml never prevents the app from starting.
     let theme = load_theme().unwrap_or_default();
+    let config = load_config().unwrap_or_default();
 
     let mut app = App {
         screen: Screen::Login,
@@ -254,39 +312,12 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
         query: String::new(),
         max_len: 0,
         theme,
+        config,
+        login_error: None,
+        last_activity: Instant::now(),
         table_state: TableState::default().with_selected(Some(0)),
-        entries: vec![
-            Entry {
-                name: "GitHub".into(),
-                user: "alice".into(),
-                password: "hunter2".into(),
-                url: "https://www.youtube.com/watch?v=yqGR9b9OItM".into(),
-                date_last_modify: "12/12/2024".into(),
-                totp: "123456".into(),
-                password_reuse_count: 0,
-                duplicate_user_count: 0,
-            },
-            Entry {
-                name: "GitHub".into(),
-                user: "malice".into(),
-                password: "hunter2".into(),
-                url: "https://www.youtube.com/watch?v=yqGR9b9OItM".into(),
-                date_last_modify: "12/12/2024".into(),
-                totp: "123456".into(),
-                password_reuse_count: 0,
-                duplicate_user_count: 0,
-            },
-            Entry {
-                name: "GitHub".into(),
-                user: "alice".into(),
-                password: "hunter".into(),
-                url: "https://www.youtube.com/watch?v=yqGR9b9OItM".into(),
-                date_last_modify: "12/12/2024".into(),
-                totp: "123456".into(),
-                password_reuse_count: 0,
-                duplicate_user_count: 0,
-            },
-        ],
+        // Populated by attempt_unlock() once the user enters the master password.
+        entries: Vec::new(),
         filtered: Vec::new(),
         command_mode: false,
         command_buffer: String::new(),
@@ -296,10 +327,6 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
         clipboard_timer: None,
         should_quit: false,
     };
-
-    // Populate reuse/duplicate counts, then build the initial filtered view.
-    calculate_warnings(&mut app.entries);
-    app.refresh_filter();
 
     // Wake periodically even with no input, to tick the countdown and auto-clear.
     const TICK_RATE: Duration = Duration::from_millis(200);
@@ -319,6 +346,8 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
 
         if event::poll(TICK_RATE)? {
             if let Event::Key(key) = event::read()? {
+                app.last_activity = Instant::now();
+
                 match app.screen {
                     Screen::Login => handle_login_input(&mut app, key.code),
                     Screen::Table => handle_table_input(&mut app, key.code),
@@ -327,6 +356,7 @@ fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> 
         }
 
         maybe_clear_clipboard(&mut app);
+        maybe_auto_lock(&mut app);
 
         if app.should_quit {
             break;
@@ -373,6 +403,21 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
 
     frame.render_widget(input, input_area);
 
+    if let Some(error) = &app.login_error {
+        let error_area = ratatui::layout::Rect {
+            x: input_area.x,
+            y: input_area.y + input_area.height,
+            width: input_area.width,
+            height: 1,
+        };
+
+        let error_text = Paragraph::new(error.as_str())
+            .alignment(Alignment::Center)
+            .style(Style::new().fg(app.theme.error));
+
+        frame.render_widget(error_text, error_area);
+    }
+
     // Keep cursor inside the box
     let text_width = app.password.chars().count() as u16;
     let inner_width = input_area.width - 1;
@@ -385,20 +430,20 @@ fn draw_login(frame: &mut Frame, app: &mut App) {
 fn handle_login_input(app: &mut App, key: KeyCode) {
     match key {
         KeyCode::Char(c) => {
+            app.login_error = None;
+
             if app.password.len() < app.max_len {
                 app.password.push(c);
             }
         }
 
         KeyCode::Backspace => {
+            app.login_error = None;
             app.password.pop();
         }
 
         KeyCode::Enter => {
-            // TODO replace for actual password
-            if app.password == "aa" {
-                app.screen = Screen::Table;
-            }
+            attempt_unlock(app);
         }
 
         KeyCode::Esc => {
@@ -407,6 +452,72 @@ fn handle_login_input(app: &mut App, key: KeyCode) {
 
         _ => {}
     }
+}
+
+/// Tries to open `config.default_database` with the entered password. On success, populates
+/// `app.entries` and switches to the table screen; on failure, sets `app.login_error` and
+/// clears the password field so it can be retyped.
+fn attempt_unlock(app: &mut App) {
+    let Some(path) = app.config.default_database.clone() else {
+        app.login_error = Some("No default_database set in config.toml".to_string());
+        return;
+    };
+
+    match unlock_database(&path, &app.password) {
+        Ok(mut entries) => {
+            calculate_warnings(&mut entries);
+            app.entries = entries;
+            app.password.clear();
+            app.login_error = None;
+            app.last_activity = Instant::now();
+            app.refresh_filter();
+            app.screen = Screen::Table;
+        }
+        Err(err) => {
+            app.password.clear();
+            app.login_error = Some(format!("{err}"));
+        }
+    }
+}
+
+/// Opens the kdbx file at `path` with `password` and pulls out its entries.
+///
+/// Verified against keepass 0.13.20's actual API (docs.rs, checked directly rather than
+/// assumed): `Database::iter_all_entries()` gives `EntryRef`s, which deref to `Entry`.
+/// `get_title`/`get_username`/`get_password`/`get_url` are the crate's own convenience
+/// accessors; `get_raw_otp_value()` is the crate's dedicated accessor for the 'otp' field
+/// (covers the common case, though some clients store TOTP under a different field name);
+/// last-modified comes from `entry.times.last_modification: Option<NaiveDateTime>`.
+fn unlock_database(path: &Path, password: &str) -> anyhow::Result<Vec<Entry>> {
+    let mut file =
+        fs::File::open(path).with_context(|| format!("couldn't open {}", path.display()))?;
+
+    let key = DatabaseKey::new().with_password(password);
+    let db = Database::open(&mut file, key).context("failed to unlock database")?;
+
+    let entries = db
+        .iter_all_entries()
+        .map(|e| {
+            let date_last_modify = e
+                .times
+                .last_modification
+                .map(|dt| dt.format("%m/%d/%Y").to_string())
+                .unwrap_or_default();
+
+            Entry {
+                name: e.get_title().unwrap_or("(no title)").to_string(),
+                user: e.get_username().unwrap_or_default().to_string(),
+                password: e.get_password().unwrap_or_default().to_string(),
+                url: e.get_url().unwrap_or_default().to_string(),
+                totp: e.get_raw_otp_value().unwrap_or_default().to_string(),
+                date_last_modify,
+                password_reuse_count: 0,
+                duplicate_user_count: 0,
+            }
+        })
+        .collect();
+
+    Ok(entries)
 }
 
 // ------------------ Table
@@ -780,7 +891,8 @@ fn open_settings(_app: &mut App) {
 
 // ------------------ Clipboard
 
-/// Copies `text`, starts a 15s auto-clear timer, and reports the outcome via `app.status`.
+/// Copies `text`, starts a config.clipboard_timeout auto-clear timer, and reports the
+/// outcome via `app.status`.
 fn copy_and_report(app: &mut App, label: &str, text: &str) {
     let result = match app.clipboard.as_mut() {
         Some(clipboard) => clipboard.set_text(text),
@@ -802,7 +914,7 @@ fn copy_and_report(app: &mut App, label: &str, text: &str) {
             app.clipboard_timer = Some(ClipboardTimer {
                 label: label.to_string(),
                 expected: text.to_string(),
-                clear_at: Instant::now() + CLIPBOARD_TTL,
+                clear_at: Instant::now() + app.config.clipboard_timeout,
             });
             app.status = None;
         }
@@ -813,7 +925,26 @@ fn copy_and_report(app: &mut App, label: &str, text: &str) {
     }
 }
 
-/// Called every tick; clears the clipboard once the 15s window elapses, if it still holds our value.
+/// Called every tick; locks the app and wipes decrypted entries after config.auto_lock
+/// seconds of no keypresses. No-op on the login screen (nothing sensitive there yet).
+fn maybe_auto_lock(app: &mut App) {
+    if !matches!(app.screen, Screen::Table) {
+        return;
+    }
+
+    if app.last_activity.elapsed() < app.config.auto_lock {
+        return;
+    }
+
+    app.entries.clear();
+    app.filtered.clear();
+    app.password.clear();
+    app.query.clear();
+    app.screen = Screen::Login;
+    app.login_error = Some("Locked after inactivity".to_string());
+}
+
+/// Called every tick; clears the clipboard once the configured window elapses, if it still holds our value.
 fn maybe_clear_clipboard(app: &mut App) {
     let Some(timer) = app.clipboard_timer.as_ref() else {
         return;

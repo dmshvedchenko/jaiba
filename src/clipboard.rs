@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 struct ClipboardTimer {
     label: String,
     expected: String,
@@ -36,7 +38,7 @@ fn copy_and_report(app: &mut App, label: &str, text: &str) {
     }
 }
 
-fn maybe_clear_clipboard(app: &mut App) {
+pub fn maybe_clear_clipboard(app: &mut App) {
     let Some(timer) = app.clipboard_timer.as_ref() else {
         return;
     };

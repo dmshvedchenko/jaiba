@@ -14,7 +14,7 @@ use app::App;
 fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();
 
-    let result = App::run(&mut terminal)?;
+    let result = App::run(&mut terminal);
 
     ratatui::restore();
 

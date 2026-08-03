@@ -1,0 +1,171 @@
+use std::io;
+use std::time::{Duration, Instant};
+
+use arboard::Clipboard;
+use crossterm::event::{self, Event};
+use ratatui::{
+    Terminal, backend::CrosstermBackend, style::Style, widgets::Block, widgets::TableState,
+};
+
+use crate::clipboard::{ClipboardTimer, maybe_clear_clipboard};
+use crate::config::{Config, load_config};
+use crate::db::Entry;
+use crate::input::login::handle_login_input;
+use crate::input::table::handle_table_input;
+use crate::theme::{Theme, load_theme};
+use crate::ui::login::draw_login;
+use crate::ui::table::draw_table;
+
+pub enum Screen {
+    Login,
+    Table,
+}
+
+pub struct App {
+    pub screen: Screen,
+    pub password: String,
+    pub query: String,
+    pub max_len: usize,
+    pub table_state: TableState,
+    pub entries: Vec<Entry>,
+    pub filtered: Vec<usize>,
+    pub theme: Theme,
+    pub config: Config,
+
+    pub login_error: Option<String>,
+
+    pub last_activity: Instant,
+
+    pub command_mode: bool,
+    pub command_buffer: String,
+
+    pub status: Option<String>,
+
+    pub clipboard: Option<Clipboard>,
+
+    pub clipboard_timer: Option<ClipboardTimer>,
+
+    pub should_quit: bool,
+}
+
+impl App {
+    fn compute_filtered(&self) -> Vec<usize> {
+        let query = self.query.to_lowercase();
+
+        let mut indices: Vec<usize> = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| {
+                query.is_empty()
+                    || entry.name.to_lowercase().contains(&query)
+                    || entry.user.to_lowercase().contains(&query)
+            })
+            .map(|(i, _)| i)
+            .collect();
+
+        indices.sort_by(|&a, &b| {
+            let ea = &self.entries[a];
+            let eb = &self.entries[b];
+
+            eb.password_reuse_count
+                .cmp(&ea.password_reuse_count)
+                .then_with(|| eb.duplicate_user_count.cmp(&ea.duplicate_user_count))
+                .then_with(|| ea.name.to_lowercase().cmp(&eb.name.to_lowercase()))
+        });
+
+        indices
+    }
+
+    pub fn refresh_filter(&mut self) {
+        self.filtered = self.compute_filtered();
+
+        let count = self.filtered.len();
+        self.table_state
+            .select(if count == 0 { None } else { Some(0) });
+    }
+
+    pub fn selected_entry(&self) -> Option<&Entry> {
+        let selected = self.table_state.selected()?;
+        let entry_idx = *self.filtered.get(selected)?;
+        self.entries.get(entry_idx)
+    }
+}
+
+fn maybe_auto_lock(app: &mut App) {
+    if !matches!(app.screen, Screen::Table) {
+        return;
+    }
+
+    if app.last_activity.elapsed() < app.config.auto_lock {
+        return;
+    }
+
+    app.entries.clear();
+    app.filtered.clear();
+    app.password.clear();
+    app.query.clear();
+    app.screen = Screen::Login;
+    app.login_error = Some("Locked after inactivity".to_string());
+}
+
+pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
+    let config = load_config().unwrap_or_default();
+    let theme = load_theme(config.theme.as_deref()).unwrap_or_default();
+
+    let mut app = App {
+        screen: Screen::Login,
+        password: String::new(),
+        query: String::new(),
+        max_len: 0,
+        theme,
+        config,
+        login_error: None,
+        last_activity: Instant::now(),
+        table_state: TableState::default().with_selected(Some(0)),
+        entries: Vec::new(),
+        filtered: Vec::new(),
+        command_mode: false,
+        command_buffer: String::new(),
+        status: None,
+        clipboard: Clipboard::new().ok(),
+        clipboard_timer: None,
+        should_quit: false,
+    };
+
+    const TICK_RATE: Duration = Duration::from_millis(200);
+
+    loop {
+        terminal.draw(|frame| {
+            frame.render_widget(
+                Block::default().style(Style::default().bg(app.theme.background)),
+                frame.area(),
+            );
+
+            match app.screen {
+                Screen::Login => draw_login(frame, &mut app),
+                Screen::Table => draw_table(frame, &mut app),
+            }
+        })?;
+
+        if event::poll(TICK_RATE)? {
+            if let Event::Key(key) = event::read()? {
+                app.last_activity = Instant::now();
+
+                match app.screen {
+                    Screen::Login => handle_login_input(&mut app, key.code),
+                    Screen::Table => handle_table_input(&mut app, key.code),
+                }
+            }
+        }
+
+        maybe_clear_clipboard(&mut app);
+        maybe_auto_lock(&mut app);
+
+        if app.should_quit {
+            break;
+        }
+    }
+
+    Ok(())
+}

@@ -994,14 +994,27 @@ fn calculate_warnings(entries: &mut Vec<Entry>) {
     let mut user_counts: HashMap<String, u32> = HashMap::new();
 
     for entry in entries.iter() {
-        *password_counts.entry(entry.password.clone()).or_insert(0) += 1;
-        *user_counts.entry(entry.user.clone()).or_insert(0) += 1;
+        if !entry.password.trim().is_empty() {
+            *password_counts.entry(entry.password.clone()).or_insert(0) += 1;
+        }
+
+        if !entry.user.trim().is_empty() {
+            *user_counts.entry(entry.user.clone()).or_insert(0) += 1;
+        }
     }
 
     for entry in entries.iter_mut() {
-        entry.password_reuse_count = password_counts.get(&entry.password).copied().unwrap_or(0);
+        entry.password_reuse_count = if entry.password.trim().is_empty() {
+            0
+        } else {
+            password_counts.get(&entry.password).copied().unwrap_or(0)
+        };
 
-        entry.duplicate_user_count = user_counts.get(&entry.user).copied().unwrap_or(0);
+        entry.duplicate_user_count = if entry.user.trim().is_empty() {
+            0
+        } else {
+            user_counts.get(&entry.user).copied().unwrap_or(0)
+        };
     }
 }
 

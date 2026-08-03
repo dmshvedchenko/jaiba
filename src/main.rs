@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::Context;
 use arboard::Clipboard;
+use chrono::Utc;
 use crossterm::event::{self, Event, KeyCode};
 use keepass::{Database, DatabaseKey};
 
@@ -454,9 +455,6 @@ fn handle_login_input(app: &mut App, key: KeyCode) {
     }
 }
 
-/// Tries to open `config.default_database` with the entered password. On success, populates
-/// `app.entries` and switches to the table screen; on failure, sets `app.login_error` and
-/// clears the password field so it can be retyped.
 fn attempt_unlock(app: &mut App) {
     let Some(path) = app.config.default_database.clone() else {
         app.login_error = Some("No default_database set in config.toml".to_string());
@@ -480,14 +478,17 @@ fn attempt_unlock(app: &mut App) {
     }
 }
 
-/// Opens the kdbx file at `path` with `password` and pulls out its entries.
-///
-/// Verified against keepass 0.13.20's actual API (docs.rs, checked directly rather than
-/// assumed): `Database::iter_all_entries()` gives `EntryRef`s, which deref to `Entry`.
-/// `get_title`/`get_username`/`get_password`/`get_url` are the crate's own convenience
-/// accessors; `get_raw_otp_value()` is the crate's dedicated accessor for the 'otp' field
-/// (covers the common case, though some clients store TOTP under a different field name);
-/// last-modified comes from `entry.times.last_modification: Option<NaiveDateTime>`.
+/// Renders a last-modified timestamp as a relative "N days ago" string.
+fn format_days_ago(dt: chrono::NaiveDateTime) -> String {
+    let days = (Utc::now().naive_utc() - dt).num_days();
+
+    match days {
+        d if d <= 0 => "today".to_string(),
+        1 => "1 day ago".to_string(),
+        d => format!("{d} days ago"),
+    }
+}
+
 fn unlock_database(path: &Path, password: &str) -> anyhow::Result<Vec<Entry>> {
     let mut file =
         fs::File::open(path).with_context(|| format!("couldn't open {}", path.display()))?;
@@ -501,7 +502,7 @@ fn unlock_database(path: &Path, password: &str) -> anyhow::Result<Vec<Entry>> {
             let date_last_modify = e
                 .times
                 .last_modification
-                .map(|dt| dt.format("%m/%d/%Y").to_string())
+                .map(format_days_ago)
                 .unwrap_or_default();
 
             Entry {
@@ -528,8 +529,7 @@ const HELP_ITEMS: &[&str] = &[
     "[:t] cp_totp",
     "[:r] cp_url",
     "[:a] add_entry",
-    "[:e] edit_entry",
-    "[enter] preview_entry",
+    "[enter] expand_entry",
     "[:q] quit",
     "[:s] settings",
 ];
@@ -588,7 +588,7 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
         ])
         .split(vertical[0]);
 
-    let header = Row::new(["Name", "User", "Password", "TOTP", "Last Modify"])
+    let header = Row::new(["Name", "User", "Password", "Last Modify"])
         .style(Style::new().bold().fg(app.theme.header))
         .bottom_margin(1);
 
@@ -629,16 +629,14 @@ fn draw_table(frame: &mut Frame, app: &mut App) {
             Cell::from(entry.name.as_str()),
             Cell::from(user),
             Cell::from(password),
-            Cell::from(entry.totp.as_str()),
             Cell::from(entry.date_last_modify.as_str()),
         ])
     });
 
     let column_widths = [
-        Constraint::Percentage(25),
-        Constraint::Percentage(35),
+        Constraint::Percentage(30),
+        Constraint::Percentage(40),
         Constraint::Percentage(15),
-        Constraint::Percentage(10),
         Constraint::Percentage(15),
     ];
 
@@ -774,7 +772,6 @@ const COMMANDS: &[(&str, Command)] = &[
     ("t", Command::CopyTotp),
     ("r", Command::CopyUrl),
     ("a", Command::AddEntry),
-    ("e", Command::EditEntry),
     ("q", Command::Quit),
     ("s", Command::Settings),
 ];
@@ -786,7 +783,6 @@ enum Command {
     CopyTotp,
     CopyUrl,
     AddEntry,
-    EditEntry,
     Quit,
     Settings,
 }
@@ -863,7 +859,6 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::CopyTotp => cp_totp(app),
         Command::CopyUrl => cp_url(app),
         Command::AddEntry => add_entry(app),
-        Command::EditEntry => edit_entry(app),
         Command::Quit => app.should_quit = true,
         Command::Settings => open_settings(app),
     }
@@ -871,12 +866,6 @@ fn execute_command(app: &mut App, cmd: Command) {
 
 fn add_entry(_app: &mut App) {
     // TODO: open an "add entry" form/screen
-}
-
-fn edit_entry(app: &mut App) {
-    if let Some(_entry) = app.selected_entry() {
-        // TODO: open an "edit entry" form/screen for _entry
-    }
 }
 
 fn preview_entry(app: &mut App) {

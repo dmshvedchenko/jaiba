@@ -42,6 +42,8 @@ pub struct App {
     /// Index into `entries` this edit maps back to, or `None` if `edit_entry`
     /// is a brand new entry that doesn't exist in `entries` yet.
     pub edit_target: Option<usize>,
+    pub editing_field: bool,
+    pub field_buffer: String,
     pub entries: Vec<Entry>,
     pub filtered: Vec<usize>,
     pub theme: Theme,
@@ -122,6 +124,8 @@ fn maybe_auto_lock(app: &mut App) {
     app.query.clear();
     app.edit_entry = None;
     app.edit_target = None;
+    app.editing_field = false;
+    app.field_buffer.clear();
     app.reveal_password = false;
     app.screen = Screen::Login;
     app.login_error = Some("Locked after inactivity".to_string());
@@ -145,6 +149,8 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         reveal_password: false,
         edit_entry: None,
         edit_target: None,
+        editing_field: false,
+        field_buffer: String::new(),
         entries: Vec::new(),
         filtered: Vec::new(),
         command_mode: false,

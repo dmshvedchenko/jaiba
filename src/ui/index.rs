@@ -3,7 +3,7 @@ use std::time::Instant;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
-    style::Style,
+    style::{Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Padding, Paragraph, Row, Table},
 };
@@ -11,6 +11,7 @@ use ratatui::{
 use crate::app::App;
 use crate::db::Entry;
 use crate::theme::Theme;
+use crate::util::wrap_help_items;
 
 const HELP_ITEMS: &[&str] = &[
     "[:u] cp_user",
@@ -22,35 +23,6 @@ const HELP_ITEMS: &[&str] = &[
     "[:q] quit",
     "[:s] settings",
 ];
-
-fn wrap_help_items(items: &[&str], width: u16) -> Vec<String> {
-    let width = width as usize;
-    let mut lines: Vec<String> = Vec::new();
-    let mut current = String::new();
-
-    for item in items {
-        let candidate_len = if current.is_empty() {
-            item.len()
-        } else {
-            current.len() + 2 + item.len()
-        };
-
-        if !current.is_empty() && candidate_len > width {
-            lines.push(std::mem::take(&mut current));
-        }
-
-        if !current.is_empty() {
-            current.push_str("  ");
-        }
-        current.push_str(item);
-    }
-
-    if !current.is_empty() || lines.is_empty() {
-        lines.push(current);
-    }
-
-    lines
-}
 
 fn masked_password<'a>(entry: &'a Entry, theme: &Theme) -> Line<'a> {
     let normal = Style::new().fg(theme.text);

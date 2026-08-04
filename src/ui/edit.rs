@@ -1,11 +1,24 @@
+use std::time::Instant;
+
 use ratatui::{
     Frame,
-    style::Style,
+    layout::{Constraint, Direction, Layout},
+    style::{Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Padding},
+    widgets::{Block, Borders, List, ListItem, Padding, Paragraph},
 };
 
 use crate::app::App;
+use crate::util::wrap_help_items;
+
+const NAV_HELP_ITEMS: &[&str] = &[
+    "[↑↓] navigate",
+    "[enter] edit field",
+    "[v] toggle visibility",
+    "[esc] save & close",
+];
+
+const FIELD_HELP_ITEMS: &[&str] = &["[enter] save field", "[esc] cancel"];
 
 pub fn draw_edit(frame: &mut Frame, app: &mut App) {
     let full_area = frame.area();
@@ -30,41 +43,67 @@ pub fn draw_edit(frame: &mut Frame, app: &mut App) {
     } else {
         "•".repeat(entry.password.chars().count().max(8))
     };
+
     let is_new_entry = app.edit_target.is_none();
+    let editing_field = app.editing_field;
+    let field_buffer = app.field_buffer.clone();
+    let selected = app.edit_state.selected().unwrap_or(0);
+    let reveal_password = app.reveal_password;
 
     let theme = &app.theme;
     let label_style = Style::new().fg(theme.header).bold();
     let normal = Style::new().fg(theme.text);
     let warning = Style::new().fg(theme.warning);
     let placeholder = Style::new().fg(theme.border).italic();
+    let editing_style = Style::new().fg(theme.selection_fg).bg(theme.selection_bg);
+    let accent_style = Style::new().fg(theme.accent);
+    let border_style = Style::new().fg(theme.border);
 
-    let value_or_placeholder = |value: String| -> Line<'static> {
-        if value.is_empty() {
-            Line::from(Span::styled("(empty)", placeholder))
-        } else {
-            Line::from(Span::styled(value, normal))
-        }
-    };
-
-    let mut user_spans = if user.is_empty() {
-        vec![Span::styled("(empty)", placeholder)]
+    let help_items = if editing_field {
+        FIELD_HELP_ITEMS
     } else {
-        vec![Span::styled(user, normal)]
+        NAV_HELP_ITEMS
     };
-    if duplicate_user_count > 1 {
-        user_spans.push(Span::styled(format!(" [{duplicate_user_count}]"), warning));
-    }
+    let help_width = full_area.width.saturating_sub(2);
+    let help_lines = wrap_help_items(help_items, help_width);
+    let help_height = help_lines.len() as u16;
 
-    let mut password_spans = if !password_is_set {
-        vec![Span::styled("(empty)", placeholder)]
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Fill(1), Constraint::Length(help_height)])
+        .split(full_area);
+
+    let render_value =
+        |field_index: usize, value: String, extra: Vec<Span<'static>>| -> Line<'static> {
+            if editing_field && selected == field_index {
+                return Line::from(vec![
+                    Span::styled(field_buffer.clone(), editing_style),
+                    Span::styled("▏", accent_style),
+                ]);
+            }
+
+            if value.is_empty() && extra.is_empty() {
+                return Line::from(Span::styled("(empty)", placeholder));
+            }
+
+            let mut spans = vec![Span::styled(value, normal)];
+            spans.extend(extra);
+            Line::from(spans)
+        };
+
+    let user_extra = if duplicate_user_count > 1 {
+        vec![Span::styled(format!(" [{duplicate_user_count}]"), warning)]
     } else {
-        vec![Span::styled(password_text, normal)]
+        vec![]
     };
-    if password_reuse_count > 1 {
-        password_spans.push(Span::styled(format!(" [{password_reuse_count}]"), warning));
-    }
-    if password_is_set && app.reveal_password {
-        password_spans.push(Span::styled("  [visible]", warning));
+
+    let mut password_extra = if password_reuse_count > 1 {
+        vec![Span::styled(format!(" [{password_reuse_count}]"), warning)]
+    } else {
+        vec![]
+    };
+    if password_is_set && reveal_password {
+        password_extra.push(Span::styled("  [visible]", warning));
     }
 
     let field = |label: &'static str, value: Line<'static>| -> ListItem<'static> {
@@ -76,12 +115,12 @@ pub fn draw_edit(frame: &mut Frame, app: &mut App) {
     };
 
     let items = vec![
-        field("Name", value_or_placeholder(name)),
-        field("User", Line::from(user_spans)),
-        field("Password", Line::from(password_spans)),
-        field("URL", value_or_placeholder(url)),
-        field("TOTP", value_or_placeholder(totp)),
-        field("Last modified", value_or_placeholder(last_modified)),
+        field("Name", render_value(0, name, vec![])),
+        field("User", render_value(1, user, user_extra)),
+        field("Password", render_value(2, password_text, password_extra)),
+        field("URL", render_value(3, url, vec![])),
+        field("TOTP", render_value(4, totp, vec![])),
+        field("Last modified", render_value(5, last_modified, vec![])),
     ];
 
     let title = if is_new_entry {
@@ -95,15 +134,36 @@ pub fn draw_edit(frame: &mut Frame, app: &mut App) {
             Block::default()
                 .borders(Borders::ALL)
                 .padding(Padding::horizontal(1))
-                .border_style(Style::default().fg(app.theme.border))
+                .border_style(border_style)
                 .title(title),
         )
-        .highlight_style(
-            Style::new()
-                .fg(app.theme.selection_fg)
-                .bg(app.theme.selection_bg),
-        )
+        .highlight_style(editing_style)
         .highlight_symbol("→ ");
 
-    frame.render_stateful_widget(list, full_area, &mut app.edit_state);
+    frame.render_stateful_widget(list, vertical[0], &mut app.edit_state);
+
+    let help = if let Some(timer) = &app.clipboard_timer {
+        let remaining = timer
+            .clear_at
+            .saturating_duration_since(Instant::now())
+            .as_secs()
+            + 1;
+
+        Paragraph::new(format!(
+            "  Copied {} :: clearing in {remaining}s",
+            timer.label
+        ))
+        .style(Style::new().fg(app.theme.warning))
+    } else if let Some(status) = &app.status {
+        Paragraph::new(format!("  {status}")).style(Style::new().fg(app.theme.warning))
+    } else {
+        let help_text = help_lines
+            .iter()
+            .map(|line| format!("  {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        Paragraph::new(help_text).style(Style::new().fg(app.theme.accent))
+    };
+
+    frame.render_widget(help, vertical[1]);
 }

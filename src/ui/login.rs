@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout},
-    style::Style,
+    style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
 };
 
@@ -12,10 +12,14 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Fill(1),
+            Constraint::Length(20),
             Constraint::Length(3),
             Constraint::Fill(1),
         ])
         .split(frame.area());
+
+    let logo_area = vertical[1];
+    let input_row = vertical[2];
 
     let horizontal = Layout::default()
         .direction(Direction::Horizontal)
@@ -24,7 +28,7 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
             Constraint::Length(50),
             Constraint::Fill(1),
         ])
-        .split(vertical[1]);
+        .split(input_row);
 
     let input_area = horizontal[1];
 
@@ -39,6 +43,56 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
             .borders(Borders::ALL)
             .border_style(Style::default().fg(app.theme.border)),
     );
+
+    let logo_base = Paragraph::new(
+        "
+|                  ███                  ███                 |
+|                 ███                    ███                |
+|                ███   █              █   ███               |
+|               ███  ██                ██  ███              |
+|               █████                    █████              |
+|           █    ██          █  █          ██    █          |
+|         ███     ██         █  █         ██     ███        |
+|         ████     ██   ██████████████   ██     ████        |
+|           ████     ████████████████████     ████          |
+|             ████  ██████████████████████  ████            |
+|                ████████████████████████████               |
+|                   ██████████████████████                  |
+|                ████████████████████████████               |
+|              ███  ██████████████████████  ███             |
+|             ██   ██  ████████████████  ██   ██            |
+|              █  ██    ██          ██    ██   █            |
+|                  █   ██            ██    █                |
+|                       █            █                      |
+",
+    )
+    .alignment(Alignment::Center)
+    .style(Style::default().fg(Color::Rgb(119, 169, 192)));
+
+    let logo_shell = Paragraph::new(
+        "
+|
+|
+|
+|
+|
+|
+|
+|                         ██████████                        |
+|                    ████████████████████                   |
+|                   ██████████████████████                  |
+|                   ██████████████████████                  |
+|                   ██████████████████████                  |
+|                     ██████████████████                    |
+|                       ██████████████                      |
+|                         ██████████                        |
+",
+    )
+    .alignment(Alignment::Center)
+    .style(Style::default().fg(Color::Rgb(231, 97, 96)));
+
+    frame.render_widget(logo_base, logo_area);
+    // frame.render_widget(logo_shell, logo_area);
 
     frame.render_widget(input, input_area);
 

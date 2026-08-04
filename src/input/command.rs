@@ -2,6 +2,7 @@ use crossterm::event::KeyCode;
 
 use crate::app::App;
 use crate::clipboard::{cp_password, cp_totp, cp_url, cp_user};
+use crate::db::Entry;
 
 const COMMANDS: &[(&str, Command)] = &[
     ("u", Command::CopyUser),
@@ -101,14 +102,30 @@ fn execute_command(app: &mut App, cmd: Command) {
     }
 }
 
-fn add_entry(_app: &mut App) {
-    // TODO: open an "add entry" form/screen
+fn add_entry(app: &mut App) {
+    app.edit_entry = Some(Entry::default());
+    app.edit_target = None;
+    app.edit_state.select(Some(0));
+    app.reveal_password = false;
+    app.screen = crate::app::Screen::Edit;
 }
 
 pub fn preview_entry(app: &mut App) {
-    if let Some(_entry) = app.selected_entry() {
-        // TODO: show entry detail popup for _entry
-    }
+    let Some(selected) = app.index_state.selected() else {
+        return;
+    };
+    let Some(&entry_idx) = app.filtered.get(selected) else {
+        return;
+    };
+    let Some(entry) = app.entries.get(entry_idx) else {
+        return;
+    };
+
+    app.edit_entry = Some(entry.clone());
+    app.edit_target = Some(entry_idx);
+    app.edit_state.select(Some(0));
+    app.reveal_password = false;
+    app.screen = crate::app::Screen::Edit;
 }
 
 fn open_settings(_app: &mut App) {

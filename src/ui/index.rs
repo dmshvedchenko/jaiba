@@ -175,7 +175,7 @@ pub fn draw_index(frame: &mut Frame, app: &mut App) {
 
     let index_area = vertical[1];
 
-    frame.render_stateful_widget(table_index, index_area, &mut app.table_state);
+    frame.render_stateful_widget(table_index, index_area, &mut app.index_state);
 
     let query_area = query_row[1];
 

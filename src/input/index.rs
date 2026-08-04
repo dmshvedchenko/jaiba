@@ -45,7 +45,7 @@ pub fn handle_index_input(app: &mut App, key: KeyCode) {
 
             app.status = None;
 
-            let selected = app.table_state.selected().unwrap_or(0);
+            let selected = app.index_state.selected().unwrap_or(0);
 
             let next = if selected >= row_count - 1 {
                 0
@@ -53,7 +53,7 @@ pub fn handle_index_input(app: &mut App, key: KeyCode) {
                 selected + 1
             };
 
-            app.table_state.select(Some(next));
+            app.index_state.select(Some(next));
         }
 
         KeyCode::Up => {
@@ -65,7 +65,7 @@ pub fn handle_index_input(app: &mut App, key: KeyCode) {
 
             app.status = None;
 
-            let selected = app.table_state.selected().unwrap_or(0);
+            let selected = app.index_state.selected().unwrap_or(0);
 
             let prev = if selected == 0 {
                 row_count - 1
@@ -73,7 +73,7 @@ pub fn handle_index_input(app: &mut App, key: KeyCode) {
                 selected - 1
             };
 
-            app.table_state.select(Some(prev));
+            app.index_state.select(Some(prev));
         }
 
         _ => {}

@@ -6,6 +6,7 @@ use anyhow::Context;
 use chrono::Utc;
 use keepass::{Database, DatabaseKey};
 
+#[derive(Clone, Default)]
 pub struct Entry {
     pub name: String,
     pub user: String,

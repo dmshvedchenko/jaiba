@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 
 use arboard::Clipboard;
 use crossterm::event::{self, Event};
+use keepass::{Database, DatabaseKey};
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
@@ -46,6 +47,8 @@ pub struct App {
     pub field_buffer: String,
     pub entries: Vec<Entry>,
     pub filtered: Vec<usize>,
+    pub kdbx: Option<Database>,
+    pub db_key: Option<DatabaseKey>,
     pub theme: Theme,
     pub config: Config,
 
@@ -122,6 +125,8 @@ fn maybe_auto_lock(app: &mut App) {
     app.filtered.clear();
     app.password.clear();
     app.query.clear();
+    app.kdbx = None;
+    app.db_key = None;
     app.edit_entry = None;
     app.edit_target = None;
     app.editing_field = false;
@@ -153,6 +158,8 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         field_buffer: String::new(),
         entries: Vec::new(),
         filtered: Vec::new(),
+        kdbx: None,
+        db_key: None,
         command_mode: false,
         command_buffer: String::new(),
         status: None,

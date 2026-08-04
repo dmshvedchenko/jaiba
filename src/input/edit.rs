@@ -1,7 +1,7 @@
 use crossterm::event::KeyCode;
 
 use crate::app::{App, Screen};
-use crate::db::calculate_warnings;
+use crate::db::{calculate_warnings, save_database};
 
 const FIELD_COUNT: usize = 6;
 /// "Last modified" is computed from the database, not user-editable.
@@ -117,19 +117,47 @@ fn save_edit(app: &mut App) {
         return;
     };
 
-    match app.edit_target {
+    let saved_idx = match app.edit_target {
         Some(idx) => {
             if let Some(slot) = app.entries.get_mut(idx) {
                 *slot = entry;
             }
+            Some(idx)
         }
         None => {
-            if !entry.name.trim().is_empty() {
+            if entry.name.trim().is_empty() {
+                None
+            } else {
                 app.entries.push(entry);
+                Some(app.entries.len() - 1)
             }
         }
-    }
+    };
 
     calculate_warnings(&mut app.entries);
     app.refresh_filter();
+
+    if let Some(idx) = saved_idx {
+        persist_entry(app, idx);
+    }
+}
+
+fn persist_entry(app: &mut App, idx: usize) {
+    let (Some(db), Some(key), Some(path)) = (
+        app.kdbx.as_mut(),
+        app.db_key.as_ref(),
+        app.config.default_database.as_ref(),
+    ) else {
+        app.status = Some("Not saved: database is locked".to_string());
+        return;
+    };
+
+    let Some(target) = app.entries.get_mut(idx) else {
+        return;
+    };
+
+    match save_database(path, key, db, std::slice::from_mut(target)) {
+        Ok(()) => app.status = Some("Saved".to_string()),
+        Err(err) => app.status = Some(format!("Failed to save: {err:#}")),
+    }
 }

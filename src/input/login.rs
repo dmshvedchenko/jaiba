@@ -39,9 +39,11 @@ fn attempt_unlock(app: &mut App) {
     };
 
     match unlock_database(&path, &app.password) {
-        Ok(mut entries) => {
+        Ok((db, key, mut entries)) => {
             calculate_warnings(&mut entries);
             app.entries = entries;
+            app.kdbx = Some(db);
+            app.db_key = Some(key);
             app.password.clear();
             app.login_error = None;
             app.last_activity = Instant::now();

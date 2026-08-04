@@ -2,6 +2,7 @@ use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
 
@@ -44,55 +45,73 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
             .border_style(Style::default().fg(app.theme.border)),
     );
 
-    let logo_base = Paragraph::new(
-        "
-|                  ███                  ███                 |
-|                 ███                    ███                |
-|                ███   █              █   ███               |
-|               ███  ██                ██  ███              |
-|               █████                    █████              |
-|           █    ██          █  █          ██    █          |
-|         ███     ██         █  █         ██     ███        |
-|         ████     ██   ██████████████   ██     ████        |
-|           ████     ████████████████████     ████          |
-|             ████  ██████████████████████  ████            |
-|                ████████████████████████████               |
-|                   ██████████████████████                  |
-|                ████████████████████████████               |
-|              ███  ██████████████████████  ███             |
-|             ██   ██  ████████████████  ██   ██            |
-|              █  ██    ██          ██    ██   █            |
-|                  █   ██            ██    █                |
-|                       █            █                      |
-",
-    )
-    .alignment(Alignment::Center)
-    .style(Style::default().fg(Color::Rgb(119, 169, 192)));
+    let claws_style = Style::default().fg(Color::Rgb(85, 120, 160));
+    let shell_style = Style::default().fg(Color::Rgb(60, 60, 100));
+    let eyes_style = Style::default().fg(Color::Rgb(100, 150, 170));
 
-    let logo_shell = Paragraph::new(
-        "
-|
-|
-|
-|
-|
-|
-|
-|                         ██████████                        |
-|                    ████████████████████                   |
-|                   ██████████████████████                  |
-|                   ██████████████████████                  |
-|                   ██████████████████████                  |
-|                     ██████████████████                    |
-|                       ██████████████                      |
-|                         ██████████                        |
-",
-    )
+    let logo = Paragraph::new(vec![
+        Line::from("                  ███                  ███                 "),
+        Line::from("                 ███                    ███                "),
+        Line::from("                ███   █              █   ███               "),
+        Line::from("               ███  ██                ██  ███              "),
+        Line::from("               █████                    █████              "),
+        Line::from(vec![
+            Span::styled("           █    ██          ", claws_style),
+            Span::styled("█  █", eyes_style),
+            Span::styled("          ██    █          ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("         ███     ██         ", claws_style),
+            Span::styled("█  █", eyes_style),
+            Span::styled("         ██     ███        ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("         ████     ██   ", claws_style),
+            Span::styled("██████████████", shell_style),
+            Span::styled("   ██     ████        ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("           ████     ", claws_style),
+            Span::styled("████████████████████", shell_style),
+            Span::styled("     ████          ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("             ████  ", claws_style),
+            Span::styled("██████████████████████", shell_style),
+            Span::styled("  ████            ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("                ███", claws_style),
+            Span::styled("██████████████████████", shell_style),
+            Span::styled("███               ", claws_style),
+        ]),
+        Line::from(vec![Span::styled(
+            "                   ██████████████████████                  ",
+            shell_style,
+        )]),
+        Line::from(vec![
+            Span::styled("                ███", claws_style),
+            Span::styled("██████████████████████", shell_style),
+            Span::styled("███               ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("              ███  ██", claws_style),
+            Span::styled("██████████████████", shell_style),
+            Span::styled("██  ███             ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("             ██   ██  ", claws_style),
+            Span::styled("████████████████", shell_style),
+            Span::styled("  ██   ██            ", claws_style),
+        ]),
+        Line::from("              █  ██    ██          ██    ██   █            "),
+        Line::from("                  █   ██            ██    █                "),
+        Line::from("                       █            █                      "),
+    ])
     .alignment(Alignment::Center)
-    .style(Style::default().fg(Color::Rgb(231, 97, 96)));
+    .style(claws_style);
 
-    frame.render_widget(logo_base, logo_area);
-    // frame.render_widget(logo_shell, logo_area);
+    frame.render_widget(logo, logo_area);
 
     frame.render_widget(input, input_area);
 

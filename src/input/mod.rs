@@ -1,3 +1,3 @@
 pub mod command;
+pub mod index;
 pub mod login;
-pub mod table;

@@ -46,7 +46,7 @@ fn attempt_unlock(app: &mut App) {
             app.login_error = None;
             app.last_activity = Instant::now();
             app.refresh_filter();
-            app.screen = crate::app::Screen::Table;
+            app.screen = crate::app::Screen::Index;
         }
         Err(err) => {
             app.password.clear();

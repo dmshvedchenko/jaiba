@@ -1,7 +1,7 @@
 use crossterm::event::KeyCode;
 
 use crate::app::{App, Screen};
-use crate::db::{calculate_warnings, save_database};
+use crate::db::{calculate_warnings, delete_entry, save_database};
 
 const FIELD_COUNT: usize = 6;
 /// "Last modified" is computed from the database, not user-editable.
@@ -13,6 +13,11 @@ pub fn handle_edit_input(app: &mut App, key: KeyCode) {
         return;
     }
 
+    if app.confirm_delete {
+        handle_delete_confirmation(app, key);
+        return;
+    }
+
     match key {
         KeyCode::Esc => close_edit(app),
 
@@ -21,6 +26,8 @@ pub fn handle_edit_input(app: &mut App, key: KeyCode) {
         KeyCode::Char('v') => {
             app.reveal_password = !app.reveal_password;
         }
+
+        KeyCode::Char('d') => start_delete_confirmation(app),
 
         KeyCode::Down => move_selection(app, 1),
         KeyCode::Up => move_selection(app, -1),
@@ -103,10 +110,15 @@ fn commit_field(app: &mut App) {
 
 fn close_edit(app: &mut App) {
     save_edit(app);
+    reset_edit_state(app);
+}
 
+fn reset_edit_state(app: &mut App) {
+    app.edit_entry = None;
     app.edit_target = None;
     app.editing_field = false;
     app.field_buffer.clear();
+    app.confirm_delete = false;
     app.reveal_password = false;
     app.edit_state.select(None);
     app.screen = Screen::Index;
@@ -160,4 +172,59 @@ fn persist_entry(app: &mut App, idx: usize) {
         Ok(()) => app.status = Some("Saved".to_string()),
         Err(err) => app.status = Some(format!("Failed to save: {err:#}")),
     }
+}
+
+fn start_delete_confirmation(app: &mut App) {
+    if app.edit_entry.is_none() {
+        return;
+    }
+
+    app.confirm_delete = true;
+    app.status = Some("Delete this entry? [y] confirm  [any other key] cancel".to_string());
+}
+
+fn handle_delete_confirmation(app: &mut App, key: KeyCode) {
+    app.confirm_delete = false;
+    app.status = None;
+
+    if let KeyCode::Char('y') | KeyCode::Char('Y') = key {
+        delete_current_entry(app);
+    }
+}
+
+fn delete_current_entry(app: &mut App) {
+    let Some(entry) = app.edit_entry.take() else {
+        reset_edit_state(app);
+        return;
+    };
+
+    if let Some(id) = entry.id {
+        let (Some(db), Some(key), Some(path)) = (
+            app.kdbx.as_mut(),
+            app.db_key.as_ref(),
+            app.config.default_database.as_ref(),
+        ) else {
+            app.status = Some("Not deleted: database is locked".to_string());
+            app.edit_entry = Some(entry);
+            return;
+        };
+
+        if let Err(err) = delete_entry(path, key, db, id) {
+            app.status = Some(format!("Failed to delete: {err:#}"));
+            app.edit_entry = Some(entry);
+            return;
+        }
+    }
+
+    if let Some(idx) = app.edit_target {
+        if idx < app.entries.len() {
+            app.entries.remove(idx);
+        }
+    }
+
+    calculate_warnings(&mut app.entries);
+    app.refresh_filter();
+
+    reset_edit_state(app);
+    app.status = Some("Entry deleted".to_string());
 }

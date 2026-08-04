@@ -107,6 +107,7 @@ fn add_entry(app: &mut App) {
     app.edit_target = None;
     app.edit_state.select(Some(0));
     app.reveal_password = false;
+    app.confirm_delete = false;
     app.screen = crate::app::Screen::Edit;
 }
 
@@ -125,6 +126,7 @@ pub fn preview_entry(app: &mut App) {
     app.edit_target = Some(entry_idx);
     app.edit_state.select(Some(0));
     app.reveal_password = false;
+    app.confirm_delete = false;
     app.screen = crate::app::Screen::Edit;
 }
 

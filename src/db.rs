@@ -77,6 +77,10 @@ pub fn save_database(
         write_entry(db, entry)?;
     }
 
+    write_to_disk(path, key, db)
+}
+
+fn write_to_disk(path: &Path, key: &DatabaseKey, db: &Database) -> anyhow::Result<()> {
     let tmp_path = sibling_tmp_path(path);
 
     {
@@ -110,6 +114,19 @@ fn write_entry(db: &mut Database, entry: &mut Entry) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+pub fn delete_entry(
+    path: &Path,
+    key: &DatabaseKey,
+    db: &mut Database,
+    id: EntryId,
+) -> anyhow::Result<()> {
+    db.entry_mut(id)
+        .context("entry no longer exists in the database")?
+        .remove();
+
+    write_to_disk(path, key, db)
 }
 
 fn apply_fields(e: &mut EntryMut<'_>, entry: &Entry) {

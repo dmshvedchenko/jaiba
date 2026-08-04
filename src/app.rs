@@ -45,6 +45,7 @@ pub struct App {
     pub edit_target: Option<usize>,
     pub editing_field: bool,
     pub field_buffer: String,
+    pub confirm_delete: bool,
     pub entries: Vec<Entry>,
     pub filtered: Vec<usize>,
     pub kdbx: Option<Database>,
@@ -131,6 +132,7 @@ fn maybe_auto_lock(app: &mut App) {
     app.edit_target = None;
     app.editing_field = false;
     app.field_buffer.clear();
+    app.confirm_delete = false;
     app.reveal_password = false;
     app.screen = Screen::Login;
     app.login_error = Some("Locked after inactivity".to_string());
@@ -156,6 +158,7 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         edit_target: None,
         editing_field: false,
         field_buffer: String::new(),
+        confirm_delete: false,
         entries: Vec::new(),
         filtered: Vec::new(),
         kdbx: None,

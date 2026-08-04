@@ -45,68 +45,125 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
             .border_style(Style::default().fg(app.theme.border)),
     );
 
-    let claws_style = Style::default().fg(Color::Rgb(85, 120, 160));
-    let shell_style = Style::default().fg(Color::Rgb(60, 60, 100));
-    let eyes_style = Style::default().fg(Color::Rgb(100, 150, 170));
+    // let claws_style = Style::default().fg(Color::Rgb(85, 120, 160));
+    // let claws_light_style = Style::default().fg(Color::Rgb(105, 140, 180));
+    // let claws_shadow_style = Style::default().fg(Color::Rgb(65, 100, 140));
+    // let shell_style = Style::default().fg(Color::Rgb(60, 80, 160));
+    // let shell_light_style = Style::default().fg(Color::Rgb(80, 100, 180));
+    // let shell_shadow_style = Style::default().fg(Color::Rgb(40, 60, 140));
+
+    // let claws_style = Style::default().fg(Color::Rgb(58, 115, 184));
+    // let claws_light_style = Style::default().fg(Color::Rgb(92, 150, 215));
+    // let claws_shadow_style = Style::default().fg(Color::Rgb(35, 82, 145));
+    // let shell_style = Style::default().fg(Color::Rgb(74, 108, 128));
+    // let shell_light_style = Style::default().fg(Color::Rgb(108, 142, 160));
+    // let shell_shadow_style = Style::default().fg(Color::Rgb(46, 74, 92));
+
+    // let claws_style = Style::default().fg(Color::Rgb(70, 145, 235));
+    // let claws_light_style = Style::default().fg(Color::Rgb(115, 185, 255));
+    // let claws_shadow_style = Style::default().fg(Color::Rgb(40, 95, 185));
+    // let shell_style = Style::default().fg(Color::Rgb(55, 105, 185));
+    // let shell_light_style = Style::default().fg(Color::Rgb(95, 145, 220));
+    // let shell_shadow_style = Style::default().fg(Color::Rgb(35, 70, 140));
+
+    let claws_style = Style::default().fg(Color::Rgb(67, 125, 182));
+    let claws_light_style = Style::default().fg(Color::Rgb(100, 160, 210));
+    let claws_shadow_style = Style::default().fg(Color::Rgb(45, 92, 145));
+    let shell_style = Style::default().fg(Color::Rgb(86, 116, 104));
+    let shell_light_style = Style::default().fg(Color::Rgb(120, 148, 136));
+    let shell_shadow_style = Style::default().fg(Color::Rgb(58, 82, 74));
 
     let logo = Paragraph::new(vec![
-        Line::from("                  ███                  ███                 "),
-        Line::from("                 ███                    ███                "),
-        Line::from("                ███   █              █   ███               "),
-        Line::from("               ███  ██                ██  ███              "),
-        Line::from("               █████                    █████              "),
         Line::from(vec![
-            Span::styled("           █    ██          ", claws_style),
-            Span::styled("█  █", eyes_style),
+            Span::styled("                  ███", claws_light_style),
+            Span::styled("                  ███                 ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("                 ██", claws_light_style),
+            Span::styled("█                    ███                ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("                ██", claws_light_style),
+            Span::styled("█   █              █   ███               ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("               ██", claws_light_style),
+            Span::styled("█  ██                ██  ███              ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("               ██", claws_light_style),
+            Span::styled("███                    █████              ", claws_style),
+        ]),
+        Line::from(vec![
+            Span::styled("           █", claws_light_style),
+            Span::styled("    ██          ", claws_style),
+            Span::styled("█  █", claws_style),
             Span::styled("          ██    █          ", claws_style),
         ]),
         Line::from(vec![
-            Span::styled("         ███     ██         ", claws_style),
-            Span::styled("█  █", eyes_style),
+            Span::styled("         ██", claws_light_style),
+            Span::styled("█     ██         ", claws_style),
+            Span::styled("█  █", claws_style),
             Span::styled("         ██     ███        ", claws_style),
         ]),
         Line::from(vec![
-            Span::styled("         ████     ██   ", claws_style),
-            Span::styled("██████████████", shell_style),
-            Span::styled("   ██     ████        ", claws_style),
+            Span::styled("         ██", claws_light_style),
+            Span::styled("██     ██  ", claws_style),
+            Span::styled("████████████████", shell_light_style),
+            Span::styled("  ██     ████        ", claws_style),
         ]),
         Line::from(vec![
-            Span::styled("           ████     ", claws_style),
-            Span::styled("████████████████████", shell_style),
+            Span::styled("           ██", claws_light_style),
+            Span::styled("██     ", claws_style),
+            Span::styled("██", shell_light_style),
+            Span::styled("██████████████████", shell_style),
             Span::styled("     ████          ", claws_style),
         ]),
         Line::from(vec![
             Span::styled("             ████  ", claws_style),
-            Span::styled("██████████████████████", shell_style),
+            Span::styled("██", shell_light_style),
+            Span::styled("████████████████████", shell_style),
             Span::styled("  ████            ", claws_style),
         ]),
         Line::from(vec![
             Span::styled("                ███", claws_style),
-            Span::styled("██████████████████████", shell_style),
+            Span::styled("██", shell_light_style),
+            Span::styled("████████████████████", shell_style),
             Span::styled("███               ", claws_style),
         ]),
-        Line::from(vec![Span::styled(
-            "                   ██████████████████████                  ",
-            shell_style,
-        )]),
+        Line::from(vec![
+            Span::styled("                   ████████████████████", shell_style),
+            Span::styled("██                  ", shell_shadow_style),
+        ]),
         Line::from(vec![
             Span::styled("                ███", claws_style),
-            Span::styled("██████████████████████", shell_style),
-            Span::styled("███               ", claws_style),
+            Span::styled("████████████████████", shell_style),
+            Span::styled("██", shell_shadow_style),
+            Span::styled("███               ", claws_shadow_style),
         ]),
         Line::from(vec![
             Span::styled("              ███  ██", claws_style),
-            Span::styled("██████████████████", shell_style),
-            Span::styled("██  ███             ", claws_style),
+            Span::styled("████████████████", shell_style),
+            Span::styled("██", shell_shadow_style),
+            Span::styled("██  ███             ", claws_shadow_style),
         ]),
         Line::from(vec![
             Span::styled("             ██   ██  ", claws_style),
-            Span::styled("████████████████", shell_style),
-            Span::styled("  ██   ██            ", claws_style),
+            Span::styled("████████████████", shell_shadow_style),
+            Span::styled("  ██   ██            ", claws_shadow_style),
         ]),
-        Line::from("              █  ██    ██          ██    ██   █            "),
-        Line::from("                  █   ██            ██    █                "),
-        Line::from("                       █            █                      "),
+        Line::from(vec![
+            Span::styled("              █  ██    ", claws_style),
+            Span::styled("██          ██    ██   █            ", claws_shadow_style),
+        ]),
+        Line::from(vec![
+            Span::styled("                  █   ", claws_style),
+            Span::styled("██            ██    █                ", claws_shadow_style),
+        ]),
+        Line::from(vec![Span::styled(
+            "                       █            █                      ",
+            claws_shadow_style,
+        )]),
     ])
     .alignment(Alignment::Center)
     .style(claws_style);

@@ -10,22 +10,17 @@ pub struct ClipboardTimer {
     pub clear_at: Instant,
 }
 
-/// Copies `text`, starts a config.clipboard_timeout auto-clear timer, and reports the
-/// outcome via `app.status`.
 fn copy_and_report(app: &mut App, label: &str, text: &str) {
     let result = match app.clipboard.as_mut() {
         Some(clipboard) => clipboard.set_text(text),
-        None => {
-            // Wasn't available at startup — try to connect now.
-            match Clipboard::new() {
-                Ok(mut clipboard) => {
-                    let result = clipboard.set_text(text);
-                    app.clipboard = Some(clipboard);
-                    result
-                }
-                Err(err) => Err(err),
+        None => match Clipboard::new() {
+            Ok(mut clipboard) => {
+                let result = clipboard.set_text(text);
+                app.clipboard = Some(clipboard);
+                result
             }
-        }
+            Err(err) => Err(err),
+        },
     };
 
     match result {
@@ -44,7 +39,6 @@ fn copy_and_report(app: &mut App, label: &str, text: &str) {
     }
 }
 
-/// Called every tick; clears the clipboard once the configured window elapses, if it still holds our value.
 pub fn maybe_clear_clipboard(app: &mut App) {
     let Some(timer) = app.clipboard_timer.as_ref() else {
         return;

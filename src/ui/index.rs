@@ -84,7 +84,7 @@ fn masked_user<'a>(entry: &'a Entry, theme: &Theme) -> Line<'a> {
     Line::from(spans)
 }
 
-pub fn draw_table(frame: &mut Frame, app: &mut App) {
+pub fn draw_index(frame: &mut Frame, app: &mut App) {
     let full_area = frame.area();
 
     let help_width = full_area.width.saturating_sub(2);
@@ -161,7 +161,7 @@ pub fn draw_table(frame: &mut Frame, app: &mut App) {
         Constraint::Percentage(15),
     ];
 
-    let table = Table::new(rows, column_widths)
+    let table_index = Table::new(rows, column_widths)
         .header(header)
         .column_spacing(1)
         .style(Style::new().fg(app.theme.text))
@@ -173,9 +173,9 @@ pub fn draw_table(frame: &mut Frame, app: &mut App) {
         )
         .highlight_symbol("→ ");
 
-    let table_area = vertical[1];
+    let index_area = vertical[1];
 
-    frame.render_stateful_widget(table, table_area, &mut app.table_state);
+    frame.render_stateful_widget(table_index, index_area, &mut app.table_state);
 
     let query_area = query_row[1];
 

@@ -10,15 +10,15 @@ use ratatui::{
 use crate::clipboard::{ClipboardTimer, maybe_clear_clipboard};
 use crate::config::{Config, load_config};
 use crate::db::Entry;
+use crate::input::index::handle_index_input;
 use crate::input::login::handle_login_input;
-use crate::input::table::handle_table_input;
 use crate::theme::{Theme, load_theme};
+use crate::ui::index::draw_index;
 use crate::ui::login::draw_login;
-use crate::ui::table::draw_table;
 
 pub enum Screen {
     Login,
-    Table,
+    Index,
 }
 
 pub struct App {
@@ -93,7 +93,7 @@ impl App {
 }
 
 fn maybe_auto_lock(app: &mut App) {
-    if !matches!(app.screen, Screen::Table) {
+    if !matches!(app.screen, Screen::Index) {
         return;
     }
 
@@ -144,7 +144,7 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
 
             match app.screen {
                 Screen::Login => draw_login(frame, &mut app),
-                Screen::Table => draw_table(frame, &mut app),
+                Screen::Index => draw_index(frame, &mut app),
             }
         })?;
 
@@ -154,7 +154,7 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
 
                 match app.screen {
                     Screen::Login => handle_login_input(&mut app, key.code),
-                    Screen::Table => handle_table_input(&mut app, key.code),
+                    Screen::Index => handle_index_input(&mut app, key.code),
                 }
             }
         }

@@ -29,14 +29,22 @@ pub fn handle_settings_input(app: &mut App, key: KeyCode) {
         KeyCode::Down | KeyCode::Char('j') => {
             app.status = None;
             let selected = app.settings_state.selected().unwrap_or(0);
-            let next = if selected + 1 >= ROW_COUNT { 0 } else { selected + 1 };
+            let next = if selected + 1 >= ROW_COUNT {
+                0
+            } else {
+                selected + 1
+            };
             app.settings_state.select(Some(next));
         }
 
         KeyCode::Up | KeyCode::Char('k') => {
             app.status = None;
             let selected = app.settings_state.selected().unwrap_or(0);
-            let prev = if selected == 0 { ROW_COUNT - 1 } else { selected - 1 };
+            let prev = if selected == 0 {
+                ROW_COUNT - 1
+            } else {
+                selected - 1
+            };
             app.settings_state.select(Some(prev));
         }
 
@@ -181,7 +189,11 @@ fn handle_theme_picker_input(app: &mut App, key: KeyCode) {
                 return;
             }
             let selected = app.theme_state.selected().unwrap_or(0);
-            let next = if selected + 1 >= count { 0 } else { selected + 1 };
+            let next = if selected + 1 >= count {
+                0
+            } else {
+                selected + 1
+            };
             app.theme_state.select(Some(next));
         }
 
@@ -190,7 +202,11 @@ fn handle_theme_picker_input(app: &mut App, key: KeyCode) {
                 return;
             }
             let selected = app.theme_state.selected().unwrap_or(0);
-            let prev = if selected == 0 { count - 1 } else { selected - 1 };
+            let prev = if selected == 0 {
+                count - 1
+            } else {
+                selected - 1
+            };
             app.theme_state.select(Some(prev));
         }
 

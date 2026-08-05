@@ -134,9 +134,6 @@ fn open_settings(app: &mut App) {
     app.status = None;
     app.available_themes = crate::theme::list_theme_names().unwrap_or_default();
 
-    // Put the cursor on the currently-applied theme, falling back to the
-    // first entry if the configured theme isn't in the list (or there's no
-    // config theme set yet).
     let current_idx = app.config.theme.as_deref().and_then(|current| {
         app.available_themes
             .iter()

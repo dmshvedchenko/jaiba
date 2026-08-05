@@ -11,7 +11,7 @@ pub struct Theme {
     pub text: Color,
     pub warning: Color,
     pub error: Color,
-    pub success: Color,
+    // pub success: Color,
     pub border: Color,
     pub header: Color,
     pub accent: Color,
@@ -33,7 +33,7 @@ impl Default for Theme {
             text: Color::Rgb(205, 214, 244),
             warning: Color::Rgb(249, 226, 175),
             error: Color::Rgb(243, 139, 168),
-            success: Color::Rgb(166, 227, 161),
+            // success: Color::Rgb(166, 227, 161),
             border: Color::Rgb(69, 71, 90),
             header: Color::Rgb(147, 153, 178),
             accent: Color::Rgb(203, 166, 247),
@@ -65,7 +65,7 @@ pub struct ThemeColors {
     pub accent: String,
     pub warning: String,
     pub error: String,
-    pub success: String,
+    // pub success: String,
     pub selection_fg: String,
     pub selection_bg: String,
 
@@ -89,7 +89,7 @@ impl TryFrom<ThemeConfig> for Theme {
             accent: parse_hex(&cfg.colors.accent)?,
             warning: parse_hex(&cfg.colors.warning)?,
             error: parse_hex(&cfg.colors.error)?,
-            success: parse_hex(&cfg.colors.success)?,
+            // success: parse_hex(&cfg.colors.success)?,
             selection_fg: parse_hex(&cfg.colors.selection_fg)?,
             selection_bg: parse_hex(&cfg.colors.selection_bg)?,
 
@@ -124,8 +124,6 @@ pub fn load_theme(name: Option<&str>) -> anyhow::Result<Theme> {
     Theme::try_from(config)
 }
 
-/// Names of every valid theme file in `~/.config/jaiba/themes`, sorted
-/// alphabetically (case-insensitive). Used to populate the settings screen.
 pub fn list_theme_names() -> anyhow::Result<Vec<String>> {
     let mut configs = read_theme_configs()?;
     configs.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
@@ -140,8 +138,6 @@ fn find_theme(name: &str) -> anyhow::Result<ThemeConfig> {
         .ok_or_else(|| anyhow::anyhow!("no theme named \"{name}\" found"))
 }
 
-/// Reads and parses every `*.toml` file in `~/.config/jaiba/themes`,
-/// silently skipping any that fail to parse as a `ThemeConfig`.
 fn read_theme_configs() -> anyhow::Result<Vec<ThemeConfig>> {
     let dir = expand_tilde("~/.config/jaiba/themes");
 

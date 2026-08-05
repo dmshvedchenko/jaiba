@@ -93,7 +93,6 @@ pub fn draw_index(frame: &mut Frame, app: &mut App) {
         .join("\n");
 
     let help = if let Some(timer) = &app.clipboard_timer {
-        // Recomputed every draw so the countdown ticks down smoothly.
         let remaining = timer
             .clear_at
             .saturating_duration_since(Instant::now())
@@ -154,7 +153,6 @@ pub fn draw_index(frame: &mut Frame, app: &mut App) {
 
     app.max_len = query_area.width.saturating_sub(4) as usize;
 
-    // While in command mode, show ":<buffer>" instead of the search query.
     let (input_text, input_style) = if app.command_mode {
         (
             format!(":{}", app.command_buffer),

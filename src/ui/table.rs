@@ -181,7 +181,6 @@ pub fn draw_table(frame: &mut Frame, app: &mut App) {
 
     app.max_len = query_area.width.saturating_sub(4) as usize;
 
-    // While in command mode, show ":<buffer>" instead of the search query.
     let (input_text, input_style) = if app.command_mode {
         (
             format!(":{}", app.command_buffer),

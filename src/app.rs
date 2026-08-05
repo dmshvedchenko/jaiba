@@ -39,12 +39,7 @@ pub struct App {
     pub index_state: TableState,
     pub edit_state: ListState,
     pub reveal_password: bool,
-    /// Snapshot of the entry being shown on the edit screen. `Some` for both
-    /// "editing an existing entry" and "creating a new one" — the two are
-    /// told apart by `edit_target`.
     pub edit_entry: Option<Entry>,
-    /// Index into `entries` this edit maps back to, or `None` if `edit_entry`
-    /// is a brand new entry that doesn't exist in `entries` yet.
     pub edit_target: Option<usize>,
     pub editing_field: bool,
     pub field_buffer: String,

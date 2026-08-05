@@ -63,9 +63,6 @@ struct ConfigFileOut<'a> {
     theme: Option<&'a str>,
 }
 
-/// Writes the current config back to `~/.config/jaiba/config.toml`, creating
-/// the parent directory if it doesn't exist yet. Called whenever the settings
-/// screen applies a new theme, so the choice persists across restarts.
 pub fn save_config(config: &Config) -> anyhow::Result<()> {
     let path = expand_tilde("~/.config/jaiba/config.toml");
 

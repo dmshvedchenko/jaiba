@@ -4,7 +4,6 @@ use crate::app::{App, Screen};
 use crate::db::{calculate_warnings, delete_entry, save_database};
 
 const FIELD_COUNT: usize = 6;
-/// "Last modified" is computed from the database, not user-editable.
 const LAST_MODIFIED_INDEX: usize = 5;
 
 pub fn handle_edit_input(app: &mut App, key: KeyCode) {

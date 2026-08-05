@@ -47,12 +47,18 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
 
     let (title, content) = if app.creating_database {
         if app.confirming_new_db_password {
-            (" Confirm master password ", BoxContent::Masked(&app.new_db_confirm))
+            (
+                " Confirm master password ",
+                BoxContent::Masked(&app.new_db_confirm),
+            )
         } else {
             (" New master password ", BoxContent::Masked(&app.password))
         }
     } else if missing {
-        (" No database found ", BoxContent::Static("Press [n] to create a new database"))
+        (
+            " No database found ",
+            BoxContent::Static("Press [n] to create a new database"),
+        )
     } else {
         ("", BoxContent::Masked(&app.password))
     };
@@ -62,12 +68,14 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
         BoxContent::Static(text) => text.to_string(),
     };
 
-    let input = Paragraph::new(input_text).alignment(Alignment::Center).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(app.theme.border))
-            .title(title),
-    );
+    let input = Paragraph::new(input_text)
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(app.theme.border))
+                .title(title),
+        );
 
     let claws_style = Style::default().fg(app.theme.claws);
     let claws_light_style = Style::default().fg(app.theme.claws_light);
@@ -98,10 +106,10 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
             Span::styled("███                    █████              ", claws_style),
         ]),
         Line::from(vec![
-            Span::styled("           █", claws_light_style),
+            Span::styled("          ██", claws_light_style),
             Span::styled("    ██          ", claws_style),
             Span::styled("█  █", claws_light_style),
-            Span::styled("          ██    █          ", claws_style),
+            Span::styled("          ██    ██         ", claws_style),
         ]),
         Line::from(vec![
             Span::styled("         ██", claws_light_style),

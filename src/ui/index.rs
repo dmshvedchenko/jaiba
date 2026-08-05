@@ -14,6 +14,7 @@ use crate::theme::Theme;
 use crate::util::wrap_help_items;
 
 const HELP_ITEMS: &[&str] = &[
+    "[↑↓] navigate",
     "[:u] cp_user",
     "[:p] cp_password",
     "[:t] cp_totp",

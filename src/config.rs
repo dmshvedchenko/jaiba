@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Context;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::util::expand_tilde;
 
@@ -53,4 +53,40 @@ pub fn load_config() -> anyhow::Result<Config> {
             .unwrap_or(defaults.clipboard_timeout),
         theme: raw.theme,
     })
+}
+
+#[derive(Serialize)]
+struct ConfigFileOut<'a> {
+    default_database: Option<String>,
+    auto_lock: u64,
+    clipboard_timeout: u64,
+    theme: Option<&'a str>,
+}
+
+/// Writes the current config back to `~/.config/jaiba/config.toml`, creating
+/// the parent directory if it doesn't exist yet. Called whenever the settings
+/// screen applies a new theme, so the choice persists across restarts.
+pub fn save_config(config: &Config) -> anyhow::Result<()> {
+    let path = expand_tilde("~/.config/jaiba/config.toml");
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("couldn't create {}", parent.display()))?;
+    }
+
+    let out = ConfigFileOut {
+        default_database: config
+            .default_database
+            .as_ref()
+            .map(|p| p.display().to_string()),
+        auto_lock: config.auto_lock.as_secs(),
+        clipboard_timeout: config.clipboard_timeout.as_secs(),
+        theme: config.theme.as_deref(),
+    };
+
+    let text = toml::to_string_pretty(&out).context("couldn't serialize config")?;
+
+    fs::write(&path, text).with_context(|| format!("couldn't write {}", path.display()))?;
+
+    Ok(())
 }

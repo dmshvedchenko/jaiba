@@ -17,15 +17,18 @@ use crate::db::Entry;
 use crate::input::edit::handle_edit_input;
 use crate::input::index::handle_index_input;
 use crate::input::login::handle_login_input;
+use crate::input::settings::handle_settings_input;
 use crate::theme::{Theme, load_theme};
 use crate::ui::edit::draw_edit;
 use crate::ui::index::draw_index;
 use crate::ui::login::draw_login;
+use crate::ui::settings::draw_settings;
 
 pub enum Screen {
     Login,
     Index,
     Edit,
+    Settings,
 }
 
 pub struct App {
@@ -52,6 +55,9 @@ pub struct App {
     pub db_key: Option<DatabaseKey>,
     pub theme: Theme,
     pub config: Config,
+
+    pub available_themes: Vec<String>,
+    pub settings_state: ListState,
 
     pub login_error: Option<String>,
 
@@ -114,7 +120,7 @@ impl App {
 }
 
 fn maybe_auto_lock(app: &mut App) {
-    if !matches!(app.screen, Screen::Index | Screen::Edit) {
+    if !matches!(app.screen, Screen::Index | Screen::Edit | Screen::Settings) {
         return;
     }
 
@@ -134,6 +140,8 @@ fn maybe_auto_lock(app: &mut App) {
     app.field_buffer.clear();
     app.confirm_delete = false;
     app.reveal_password = false;
+    app.available_themes.clear();
+    app.settings_state.select(None);
     app.screen = Screen::Login;
     app.login_error = Some("Locked after inactivity".to_string());
 }
@@ -149,6 +157,8 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         max_len: 0,
         theme,
         config,
+        available_themes: Vec::new(),
+        settings_state: ListState::default(),
         login_error: None,
         last_activity: Instant::now(),
         index_state: TableState::default().with_selected(Some(0)),
@@ -184,6 +194,7 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
                 Screen::Login => draw_login(frame, &mut app),
                 Screen::Index => draw_index(frame, &mut app),
                 Screen::Edit => draw_edit(frame, &mut app),
+                Screen::Settings => draw_settings(frame, &mut app),
             }
         })?;
 
@@ -195,6 +206,7 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
                     Screen::Login => handle_login_input(&mut app, key.code),
                     Screen::Index => handle_index_input(&mut app, key.code),
                     Screen::Edit => handle_edit_input(&mut app, key.code),
+                    Screen::Settings => handle_settings_input(&mut app, key.code),
                 }
             }
         }

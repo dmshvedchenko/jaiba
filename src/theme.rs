@@ -124,10 +124,30 @@ pub fn load_theme(name: Option<&str>) -> anyhow::Result<Theme> {
     Theme::try_from(config)
 }
 
+/// Names of every valid theme file in `~/.config/jaiba/themes`, sorted
+/// alphabetically (case-insensitive). Used to populate the settings screen.
+pub fn list_theme_names() -> anyhow::Result<Vec<String>> {
+    let mut configs = read_theme_configs()?;
+    configs.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+
+    Ok(configs.into_iter().map(|config| config.name).collect())
+}
+
 fn find_theme(name: &str) -> anyhow::Result<ThemeConfig> {
+    read_theme_configs()?
+        .into_iter()
+        .find(|config| config.name.eq_ignore_ascii_case(name))
+        .ok_or_else(|| anyhow::anyhow!("no theme named \"{name}\" found"))
+}
+
+/// Reads and parses every `*.toml` file in `~/.config/jaiba/themes`,
+/// silently skipping any that fail to parse as a `ThemeConfig`.
+fn read_theme_configs() -> anyhow::Result<Vec<ThemeConfig>> {
     let dir = expand_tilde("~/.config/jaiba/themes");
 
     let entries = fs::read_dir(&dir).with_context(|| format!("couldn't read {}", dir.display()))?;
+
+    let mut configs = Vec::new();
 
     for entry in entries {
         let path = entry?.path();
@@ -137,14 +157,11 @@ fn find_theme(name: &str) -> anyhow::Result<ThemeConfig> {
         }
 
         let text = fs::read_to_string(&path)?;
-        let Ok(config) = toml::from_str::<ThemeConfig>(&text) else {
-            continue;
-        };
 
-        if config.name.eq_ignore_ascii_case(name) {
-            return Ok(config);
+        if let Ok(config) = toml::from_str::<ThemeConfig>(&text) {
+            configs.push(config);
         }
     }
 
-    anyhow::bail!("no theme named \"{name}\" found in {}", dir.display())
+    Ok(configs)
 }

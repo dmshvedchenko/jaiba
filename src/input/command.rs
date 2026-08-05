@@ -130,6 +130,25 @@ pub fn preview_entry(app: &mut App) {
     app.screen = crate::app::Screen::Edit;
 }
 
-fn open_settings(_app: &mut App) {
-    // TODO: open settings screen
+fn open_settings(app: &mut App) {
+    app.status = None;
+    app.available_themes = crate::theme::list_theme_names().unwrap_or_default();
+
+    // Put the cursor on the currently-applied theme, falling back to the
+    // first entry if the configured theme isn't in the list (or there's no
+    // config theme set yet).
+    let current_idx = app.config.theme.as_deref().and_then(|current| {
+        app.available_themes
+            .iter()
+            .position(|name| name.eq_ignore_ascii_case(current))
+    });
+
+    let selected = current_idx.or(if app.available_themes.is_empty() {
+        None
+    } else {
+        Some(0)
+    });
+
+    app.settings_state.select(selected);
+    app.screen = crate::app::Screen::Settings;
 }

@@ -17,6 +17,13 @@ pub struct Theme {
     pub accent: Color,
     pub selection_fg: Color,
     pub selection_bg: Color,
+
+    pub claws: Color,
+    pub claws_light: Color,
+    pub claws_shadow: Color,
+    pub shell: Color,
+    pub shell_light: Color,
+    pub shell_shadow: Color,
 }
 
 impl Default for Theme {
@@ -32,6 +39,13 @@ impl Default for Theme {
             accent: Color::Rgb(203, 166, 247),
             selection_fg: Color::Rgb(30, 30, 46),
             selection_bg: Color::Rgb(137, 180, 250),
+
+            claws: Color::Rgb(67, 125, 182),
+            claws_light: Color::Rgb(100, 160, 210),
+            claws_shadow: Color::Rgb(45, 92, 145),
+            shell: Color::Rgb(86, 116, 104),
+            shell_light: Color::Rgb(120, 148, 136),
+            shell_shadow: Color::Rgb(58, 82, 74),
         }
     }
 }
@@ -46,18 +60,21 @@ pub struct ThemeConfig {
 pub struct ThemeColors {
     pub background: String,
     pub text: String,
-
     pub border: String,
     pub header: String,
-
     pub accent: String,
-
     pub warning: String,
     pub error: String,
     pub success: String,
-
     pub selection_fg: String,
     pub selection_bg: String,
+
+    pub claws: String,
+    pub claws_light: String,
+    pub claws_shadow: String,
+    pub shell: String,
+    pub shell_light: String,
+    pub shell_shadow: String,
 }
 
 impl TryFrom<ThemeConfig> for Theme {
@@ -67,18 +84,21 @@ impl TryFrom<ThemeConfig> for Theme {
         Ok(Self {
             background: parse_hex(&cfg.colors.background)?,
             text: parse_hex(&cfg.colors.text)?,
-
             border: parse_hex(&cfg.colors.border)?,
             header: parse_hex(&cfg.colors.header)?,
-
             accent: parse_hex(&cfg.colors.accent)?,
-
             warning: parse_hex(&cfg.colors.warning)?,
             error: parse_hex(&cfg.colors.error)?,
             success: parse_hex(&cfg.colors.success)?,
-
             selection_fg: parse_hex(&cfg.colors.selection_fg)?,
             selection_bg: parse_hex(&cfg.colors.selection_bg)?,
+
+            claws: parse_hex(&cfg.colors.claws)?,
+            claws_light: parse_hex(&cfg.colors.claws_light)?,
+            claws_shadow: parse_hex(&cfg.colors.claws_shadow)?,
+            shell: parse_hex(&cfg.colors.shell)?,
+            shell_light: parse_hex(&cfg.colors.shell_light)?,
+            shell_shadow: parse_hex(&cfg.colors.shell_shadow)?,
         })
     }
 }

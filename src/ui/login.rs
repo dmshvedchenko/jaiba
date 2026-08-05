@@ -66,12 +66,12 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
     // let shell_light_style = Style::default().fg(Color::Rgb(95, 145, 220));
     // let shell_shadow_style = Style::default().fg(Color::Rgb(35, 70, 140));
 
-    let claws_style = Style::default().fg(Color::Rgb(67, 125, 182));
-    let claws_light_style = Style::default().fg(Color::Rgb(100, 160, 210));
-    let claws_shadow_style = Style::default().fg(Color::Rgb(45, 92, 145));
-    let shell_style = Style::default().fg(Color::Rgb(86, 116, 104));
-    let shell_light_style = Style::default().fg(Color::Rgb(120, 148, 136));
-    let shell_shadow_style = Style::default().fg(Color::Rgb(58, 82, 74));
+    let claws_style = Style::default().fg(app.theme.claws);
+    let claws_light_style = Style::default().fg(app.theme.claws_light);
+    let claws_shadow_style = Style::default().fg(app.theme.claws_shadow);
+    let shell_style = Style::default().fg(app.theme.shell);
+    let shell_light_style = Style::default().fg(app.theme.shell_light);
+    let shell_shadow_style = Style::default().fg(app.theme.shell_shadow);
 
     let logo = Paragraph::new(vec![
         Line::from(vec![
@@ -97,7 +97,7 @@ pub fn draw_login(frame: &mut Frame, app: &mut App) {
         Line::from(vec![
             Span::styled("           █", claws_light_style),
             Span::styled("    ██          ", claws_style),
-            Span::styled("█  █", claws_style),
+            Span::styled("█  █", claws_light_style),
             Span::styled("          ██    █          ", claws_style),
         ]),
         Line::from(vec![

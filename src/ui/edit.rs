@@ -9,6 +9,7 @@ use ratatui::{
 };
 
 use crate::app::App;
+use crate::db::current_totp_code;
 use crate::util::wrap_help_items;
 
 const NAV_HELP_ITEMS: &[&str] = &[
@@ -31,7 +32,7 @@ pub fn draw_edit(frame: &mut Frame, app: &mut App) {
     let name = entry.name.clone();
     let user = entry.user.clone();
     let url = entry.url.clone();
-    let totp = entry.totp.clone();
+    let totp_raw = entry.totp.clone();
     let last_modified = entry.date_last_modify.clone();
     let duplicate_user_count = entry.duplicate_user_count;
     let password_reuse_count = entry.password_reuse_count;
@@ -107,10 +108,38 @@ pub fn draw_edit(frame: &mut Frame, app: &mut App) {
         password_extra.push(Span::styled("  [visible]", warning));
     }
 
+    let totp_code_line: Line<'static> = if editing_field && selected == 4 {
+        Line::from("")
+    } else {
+        match current_totp_code(&totp_raw) {
+            Some(totp) => Line::from(vec![
+                Span::styled(totp.code, normal.bold()),
+                Span::styled(
+                    format!("  (expires in {}s)", totp.valid_for.as_secs() + 1),
+                    warning,
+                ),
+            ]),
+            None if totp_raw.trim().is_empty() => Line::from(""),
+            None => Line::from(Span::styled(
+                "couldn't generate a code from the stored TOTP value",
+                warning,
+            )),
+        }
+    };
+
     let field = |label: &'static str, value: Line<'static>| -> ListItem<'static> {
         ListItem::new(vec![
             Line::from(Span::styled(label, label_style)),
             value,
+            Line::from(""), // spacer between fields
+        ])
+    };
+
+    let totp_field = |label: &'static str, value: Line<'static>, code_line: Line<'static>| -> ListItem<'static> {
+        ListItem::new(vec![
+            Line::from(Span::styled(label, label_style)),
+            value,
+            code_line,
             Line::from(""), // spacer between fields
         ])
     };
@@ -120,7 +149,7 @@ pub fn draw_edit(frame: &mut Frame, app: &mut App) {
         field("User", render_value(1, user, user_extra)),
         field("Password", render_value(2, password_text, password_extra)),
         field("URL", render_value(3, url, vec![])),
-        field("TOTP", render_value(4, totp, vec![])),
+        totp_field("TOTP", render_value(4, totp_raw, vec![]), totp_code_line),
         field("Last modified", render_value(5, last_modified, vec![])),
     ];
 

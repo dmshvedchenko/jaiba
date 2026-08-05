@@ -79,9 +79,16 @@ pub fn cp_password(app: &mut App) {
 }
 
 pub fn cp_totp(app: &mut App) {
-    if let Some(entry) = app.selected_entry() {
-        let totp = entry.totp.clone();
-        copy_and_report(app, "TOTP code", &totp);
+    let Some(entry) = app.selected_entry() else {
+        return;
+    };
+
+    match crate::db::current_totp_code(&entry.totp) {
+        Some(totp) => copy_and_report(app, "TOTP code", &totp.code),
+        None => {
+            app.clipboard_timer = None;
+            app.status = Some("No valid TOTP configured for this entry".to_string());
+        }
     }
 }
 

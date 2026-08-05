@@ -5,8 +5,71 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use chrono::Utc;
-use keepass::db::{fields, EntryId, EntryMut, Times};
+use keepass::db::{fields, EntryId, EntryMut, EntryRef, Times};
 use keepass::{Database, DatabaseKey};
+
+fn resolve_totp(e: &EntryRef) -> String {
+    if let Some(otp) = e.get_raw_otp_value() {
+        if !otp.trim().is_empty() {
+            return otp.to_string();
+        }
+    }
+
+    let Some(seed) = e.get("TOTP Seed") else {
+        return String::new();
+    };
+    let seed = seed.trim();
+    if seed.is_empty() {
+        return String::new();
+    }
+
+    let (period, digits) = e
+        .get("TOTP Settings")
+        .and_then(|settings| settings.split_once(';'))
+        .and_then(|(p, d)| Some((p.trim().parse::<u32>().ok()?, d.trim().parse::<u32>().ok()?)))
+        .unwrap_or((30, 6));
+
+    let label = e.get_title().unwrap_or("");
+    let user = e.get_username().unwrap_or("");
+    let encoded_label = urlencoding_encode(&format!("{label}:{user}"));
+    let encoded_issuer = urlencoding_encode(label);
+
+    format!(
+        "otpauth://totp/{encoded_label}?secret={seed}&period={period}&digits={digits}&issuer={encoded_issuer}"
+    )
+}
+
+pub struct TotpCode {
+    pub code: String,
+    pub valid_for: std::time::Duration,
+}
+
+pub fn current_totp_code(raw: &str) -> Option<TotpCode> {
+    if raw.trim().is_empty() {
+        return None;
+    }
+
+    let totp: keepass::db::TOTP = raw.parse().ok()?;
+    let otp_code = totp.value_now().ok()?;
+
+    Some(TotpCode {
+        code: otp_code.code,
+        valid_for: otp_code.valid_for,
+    })
+}
+
+fn urlencoding_encode(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    for b in input.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
 
 #[derive(Clone, Default)]
 pub struct Entry {
@@ -56,7 +119,7 @@ pub fn unlock_database(
                 user: e.get_username().unwrap_or_default().to_string(),
                 password: e.get_password().unwrap_or_default().to_string(),
                 url: e.get_url().unwrap_or_default().to_string(),
-                totp: e.get_raw_otp_value().unwrap_or_default().to_string(),
+                totp: resolve_totp(&e),
                 date_last_modify,
                 password_reuse_count: 0,
                 duplicate_user_count: 0,

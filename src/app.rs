@@ -51,6 +51,10 @@ pub struct App {
     pub theme: Theme,
     pub config: Config,
 
+    pub creating_database: bool,
+    pub confirming_new_db_password: bool,
+    pub new_db_confirm: String,
+
     pub available_themes: Vec<String>,
     pub settings_state: ListState,
     pub choosing_theme: bool,
@@ -141,6 +145,9 @@ fn maybe_auto_lock(app: &mut App) {
     app.settings_state.select(None);
     app.choosing_theme = false;
     app.theme_state.select(None);
+    app.creating_database = false;
+    app.confirming_new_db_password = false;
+    app.new_db_confirm.clear();
     app.screen = Screen::Login;
     app.login_error = Some("Locked after inactivity".to_string());
 }
@@ -174,6 +181,9 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         filtered: Vec::new(),
         kdbx: None,
         db_key: None,
+        creating_database: false,
+        confirming_new_db_password: false,
+        new_db_confirm: String::new(),
         command_mode: false,
         command_buffer: String::new(),
         status: None,

@@ -9,6 +9,10 @@ pub fn expand_tilde(path: &str) -> PathBuf {
     PathBuf::from(path)
 }
 
+pub fn default_new_database_path() -> PathBuf {
+    expand_tilde("~/.local/share/jaiba/default.kdbx")
+}
+
 pub fn wrap_help_items(items: &[&str], width: u16) -> Vec<String> {
     let width = width as usize;
     let mut lines: Vec<String> = Vec::new();

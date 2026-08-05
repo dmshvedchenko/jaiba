@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use chrono::Utc;
-use keepass::db::{fields, EntryId, EntryMut, EntryRef, Times};
+use keepass::db::{EntryId, EntryMut, EntryRef, Times, fields};
 use keepass::{Database, DatabaseKey};
 
 fn resolve_totp(e: &EntryRef) -> String {
@@ -130,6 +130,27 @@ pub fn unlock_database(
     Ok((db, key, entries))
 }
 
+pub fn create_database(
+    path: &Path,
+    password: &str,
+) -> anyhow::Result<(Database, DatabaseKey, Vec<Entry>)> {
+    if path.exists() {
+        anyhow::bail!("a file already exists at {}", path.display());
+    }
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("couldn't create {}", parent.display()))?;
+    }
+
+    let db = Database::new();
+    let key = DatabaseKey::new().with_password(password);
+
+    write_to_disk(path, &key, &db)?;
+
+    Ok((db, key, Vec::new()))
+}
+
 pub fn save_database(
     path: &Path,
     key: &DatabaseKey,
@@ -154,8 +175,7 @@ fn write_to_disk(path: &Path, key: &DatabaseKey, db: &Database) -> anyhow::Resul
             .map_err(|err| anyhow::anyhow!("failed to write database: {err}"))?;
     }
 
-    fs::rename(&tmp_path, path)
-        .with_context(|| format!("couldn't replace {}", path.display()))?;
+    fs::rename(&tmp_path, path).with_context(|| format!("couldn't replace {}", path.display()))?;
 
     Ok(())
 }

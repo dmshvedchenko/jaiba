@@ -3,7 +3,7 @@ use std::time::Instant;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
-    style::{Style, Stylize},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Padding, Paragraph, Row, Table},
 };

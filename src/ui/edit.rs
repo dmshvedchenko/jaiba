@@ -3,7 +3,7 @@ use std::time::Instant;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
-    style::{Style, Stylize},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Padding, Paragraph},
 };
@@ -135,7 +135,10 @@ pub fn draw_edit(frame: &mut Frame, app: &mut App) {
         ])
     };
 
-    let totp_field = |label: &'static str, value: Line<'static>, code_line: Line<'static>| -> ListItem<'static> {
+    let totp_field = |label: &'static str,
+                      value: Line<'static>,
+                      code_line: Line<'static>|
+     -> ListItem<'static> {
         ListItem::new(vec![
             Line::from(Span::styled(label, label_style)),
             value,

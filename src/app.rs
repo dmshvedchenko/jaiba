@@ -53,6 +53,8 @@ pub struct App {
 
     pub available_themes: Vec<String>,
     pub settings_state: ListState,
+    pub choosing_theme: bool,
+    pub theme_state: ListState,
 
     pub login_error: Option<String>,
 
@@ -137,6 +139,8 @@ fn maybe_auto_lock(app: &mut App) {
     app.reveal_password = false;
     app.available_themes.clear();
     app.settings_state.select(None);
+    app.choosing_theme = false;
+    app.theme_state.select(None);
     app.screen = Screen::Login;
     app.login_error = Some("Locked after inactivity".to_string());
 }
@@ -154,6 +158,8 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         config,
         available_themes: Vec::new(),
         settings_state: ListState::default(),
+        choosing_theme: false,
+        theme_state: ListState::default(),
         login_error: None,
         last_activity: Instant::now(),
         index_state: TableState::default().with_selected(Some(0)),

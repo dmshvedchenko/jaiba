@@ -1,20 +1,28 @@
 use std::time::Duration;
 
 use crossterm::event::KeyCode;
+use keepass::DatabaseKey;
 
-use crate::app::{App, Screen};
+use crate::app::{App, PasswordChangeStep, Screen};
 use crate::config::save_config;
+use crate::db::{save_database, unlock_database};
 use crate::theme::load_theme;
 use crate::util::expand_tilde;
 
-pub const ROW_COUNT: usize = 4;
+pub const ROW_COUNT: usize = 5;
 
 pub const DATABASE_ROW: usize = 0;
 pub const AUTO_LOCK_ROW: usize = 1;
 pub const CLIPBOARD_TIMEOUT_ROW: usize = 2;
 pub const THEME_ROW: usize = 3;
+pub const CHANGE_PASSWORD_ROW: usize = 4;
 
 pub fn handle_settings_input(app: &mut App, key: KeyCode) {
+    if app.changing_password {
+        handle_change_password_input(app, key);
+        return;
+    }
+
     if app.choosing_theme {
         handle_theme_picker_input(app, key);
         return;
@@ -61,6 +69,7 @@ fn activate_selected(app: &mut App) {
         AUTO_LOCK_ROW => start_editing_auto_lock(app),
         CLIPBOARD_TIMEOUT_ROW => start_editing_clipboard_timeout(app),
         THEME_ROW => start_choosing_theme(app),
+        CHANGE_PASSWORD_ROW => start_change_password(app),
         _ => {}
     }
 }
@@ -152,6 +161,122 @@ fn parse_seconds(value: &str) -> Result<u64, String> {
         .trim()
         .parse::<u64>()
         .map_err(|_| format!("\"{}\" isn't a whole number of seconds", value.trim()))
+}
+
+fn start_change_password(app: &mut App) {
+    app.current_password_buffer.clear();
+    app.new_password_buffer.clear();
+    app.new_password_confirm.clear();
+    app.password_change_step = PasswordChangeStep::CurrentPassword;
+    app.changing_password = true;
+    app.status = None;
+}
+
+fn cancel_change_password(app: &mut App) {
+    app.changing_password = false;
+    app.password_change_step = PasswordChangeStep::CurrentPassword;
+    app.current_password_buffer.clear();
+    app.new_password_buffer.clear();
+    app.new_password_confirm.clear();
+    app.status = None;
+}
+
+fn handle_change_password_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Char(c) => {
+            app.status = None;
+            let limit = app.max_len.max(1);
+
+            let buffer = match app.password_change_step {
+                PasswordChangeStep::CurrentPassword => &mut app.current_password_buffer,
+                PasswordChangeStep::NewPassword => &mut app.new_password_buffer,
+                PasswordChangeStep::ConfirmNewPassword => &mut app.new_password_confirm,
+            };
+
+            if buffer.len() < limit {
+                buffer.push(c);
+            }
+        }
+
+        KeyCode::Backspace => {
+            app.status = None;
+
+            let buffer = match app.password_change_step {
+                PasswordChangeStep::CurrentPassword => &mut app.current_password_buffer,
+                PasswordChangeStep::NewPassword => &mut app.new_password_buffer,
+                PasswordChangeStep::ConfirmNewPassword => &mut app.new_password_confirm,
+            };
+
+            buffer.pop();
+        }
+
+        KeyCode::Enter => match app.password_change_step {
+            PasswordChangeStep::CurrentPassword => verify_current_password(app),
+            PasswordChangeStep::NewPassword => {
+                if app.new_password_buffer.is_empty() {
+                    app.status = Some("new password can't be empty".to_string());
+                } else {
+                    app.password_change_step = PasswordChangeStep::ConfirmNewPassword;
+                }
+            }
+            PasswordChangeStep::ConfirmNewPassword => commit_password_change(app),
+        },
+
+        KeyCode::Esc => cancel_change_password(app),
+
+        _ => {}
+    }
+}
+
+fn verify_current_password(app: &mut App) {
+    let Some(path) = app.config.default_database.clone() else {
+        app.status = Some("no unlocked database".to_string());
+        cancel_change_password(app);
+        return;
+    };
+
+    match unlock_database(&path, &app.current_password_buffer) {
+        Ok(_) => {
+            app.current_password_buffer.clear();
+            app.status = None;
+            app.password_change_step = PasswordChangeStep::NewPassword;
+        }
+        Err(_) => {
+            app.status = Some("that isn't the current master password".to_string());
+            app.current_password_buffer.clear();
+        }
+    }
+}
+
+fn commit_password_change(app: &mut App) {
+    if app.new_password_confirm != app.new_password_buffer {
+        app.status = Some("passwords don't match".to_string());
+        app.new_password_confirm.clear();
+        app.password_change_step = PasswordChangeStep::NewPassword;
+        return;
+    }
+
+    let (Some(path), Some(db)) = (app.config.default_database.clone(), app.kdbx.as_mut()) else {
+        app.status = Some("no unlocked database".to_string());
+        cancel_change_password(app);
+        return;
+    };
+
+    let new_key = DatabaseKey::new().with_password(&app.new_password_buffer);
+
+    app.status = Some(match save_database(&path, &new_key, db, &mut app.entries) {
+        Ok(()) => {
+            app.db_key = Some(new_key);
+            "master password changed".to_string()
+        }
+        Err(err) => format!("couldn't change password: {err:#}"),
+    });
+
+    app.changing_password = false;
+    app.password_change_step = PasswordChangeStep::CurrentPassword;
+    app.current_password_buffer.clear();
+    app.new_password_buffer.clear();
+    app.new_password_confirm.clear();
 }
 
 fn start_choosing_theme(app: &mut App) {

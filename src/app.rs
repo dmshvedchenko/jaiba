@@ -31,6 +31,13 @@ pub enum Screen {
     Settings,
 }
 
+#[derive(PartialEq, Eq)]
+pub enum PasswordChangeStep {
+    CurrentPassword,
+    NewPassword,
+    ConfirmNewPassword,
+}
+
 pub struct App {
     pub screen: Screen,
     pub password: String,
@@ -59,6 +66,12 @@ pub struct App {
     pub settings_state: ListState,
     pub choosing_theme: bool,
     pub theme_state: ListState,
+
+    pub changing_password: bool,
+    pub password_change_step: PasswordChangeStep,
+    pub current_password_buffer: String,
+    pub new_password_buffer: String,
+    pub new_password_confirm: String,
 
     pub login_error: Option<String>,
 
@@ -148,6 +161,11 @@ fn maybe_auto_lock(app: &mut App) {
     app.creating_database = false;
     app.confirming_new_db_password = false;
     app.new_db_confirm.clear();
+    app.changing_password = false;
+    app.password_change_step = PasswordChangeStep::CurrentPassword;
+    app.current_password_buffer.clear();
+    app.new_password_buffer.clear();
+    app.new_password_confirm.clear();
     app.screen = Screen::Login;
     app.login_error = Some("Locked after inactivity".to_string());
 }
@@ -167,6 +185,11 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         settings_state: ListState::default(),
         choosing_theme: false,
         theme_state: ListState::default(),
+        changing_password: false,
+        password_change_step: PasswordChangeStep::CurrentPassword,
+        current_password_buffer: String::new(),
+        new_password_buffer: String::new(),
+        new_password_confirm: String::new(),
         login_error: None,
         last_activity: Instant::now(),
         index_state: TableState::default().with_selected(Some(0)),

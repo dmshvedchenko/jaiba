@@ -1,21 +1,26 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::Style,
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Padding, Paragraph},
 };
 
 use crate::app::App;
-use crate::input::settings::{AUTO_LOCK_ROW, CLIPBOARD_TIMEOUT_ROW, DATABASE_ROW};
+use crate::input::settings::{
+    AUTO_LOCK_ROW, CHANGE_PASSWORD_ROW, CLIPBOARD_TIMEOUT_ROW, DATABASE_ROW,
+};
 use crate::util::wrap_help_items;
 
 const NAV_HELP_ITEMS: &[&str] = &["[↑↓] navigate", "[enter] edit / choose theme", "[esc] back"];
 const FIELD_HELP_ITEMS: &[&str] = &["[enter] save", "[esc] cancel"];
 const THEME_PICKER_HELP_ITEMS: &[&str] = &["[↑↓] navigate", "[enter] apply", "[esc] cancel"];
+const CHANGE_PASSWORD_HELP_ITEMS: &[&str] = &["[enter] confirm", "[esc] cancel"];
 
 pub fn draw_settings(frame: &mut Frame, app: &mut App) {
-    if app.choosing_theme {
+    if app.changing_password {
+        draw_change_password(frame, app);
+    } else if app.choosing_theme {
         draw_theme_picker(frame, app);
     } else {
         draw_main_settings(frame, app);
@@ -110,6 +115,10 @@ fn draw_main_settings(frame: &mut Frame, app: &mut App) {
             render_value(CLIPBOARD_TIMEOUT_ROW, clipboard_timeout_value),
         ),
         field("Theme", theme_value),
+        field(
+            "Change master password",
+            Line::from(Span::styled("[enter] to change", placeholder)),
+        ),
     ];
 
     let list = List::new(items)
@@ -137,6 +146,102 @@ fn draw_main_settings(frame: &mut Frame, app: &mut App) {
     };
 
     frame.render_widget(help, vertical[1]);
+}
+
+fn draw_change_password(frame: &mut Frame, app: &mut App) {
+    let full_area = frame.area();
+
+    let help_width = full_area.width.saturating_sub(2);
+    let help_lines = wrap_help_items(CHANGE_PASSWORD_HELP_ITEMS, help_width);
+    let help_height = help_lines.len() as u16;
+
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(3),
+            Constraint::Fill(1),
+            Constraint::Length(help_height),
+        ])
+        .split(full_area);
+
+    let input_row = vertical[1];
+
+    let horizontal = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Fill(1), Constraint::Length(50), Constraint::Fill(1)])
+        .split(input_row);
+
+    let input_area = horizontal[1];
+    app.max_len = (input_area.width - 2) as usize;
+
+    let title = match app.password_change_step {
+        crate::app::PasswordChangeStep::CurrentPassword => " Current master password ",
+        crate::app::PasswordChangeStep::NewPassword => " New master password ",
+        crate::app::PasswordChangeStep::ConfirmNewPassword => " Confirm new master password ",
+    };
+
+    let buf = match app.password_change_step {
+        crate::app::PasswordChangeStep::CurrentPassword => &app.current_password_buffer,
+        crate::app::PasswordChangeStep::NewPassword => &app.new_password_buffer,
+        crate::app::PasswordChangeStep::ConfirmNewPassword => &app.new_password_confirm,
+    };
+
+    let input = Paragraph::new("•".repeat(buf.chars().count()))
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(app.theme.border))
+                .title(title),
+        );
+
+    frame.render_widget(input, input_area);
+
+    let hint_area = Rect {
+        x: input_area.x,
+        y: input_area.y + input_area.height,
+        width: input_area.width,
+        height: 1,
+    };
+
+    let default_hint = match app.password_change_step {
+        crate::app::PasswordChangeStep::CurrentPassword => {
+            "verify it's you before changing the master password"
+        }
+        crate::app::PasswordChangeStep::NewPassword
+        | crate::app::PasswordChangeStep::ConfirmNewPassword => {
+            "this re-encrypts your database file with the new password"
+        }
+    };
+    let hint_text = app
+        .status
+        .clone()
+        .unwrap_or_else(|| default_hint.to_string());
+    let hint_style = if app.status.is_some() {
+        Style::new().fg(app.theme.error)
+    } else {
+        Style::new().fg(app.theme.warning)
+    };
+
+    let hint = Paragraph::new(hint_text)
+        .alignment(Alignment::Center)
+        .style(hint_style);
+
+    frame.render_widget(hint, hint_area);
+
+    let typed_len = buf.chars().count() as u16;
+    let inner_width = input_area.width - 1;
+    let cursor_x = input_area.x + (inner_width.saturating_sub(typed_len) / 2) + typed_len;
+    frame.set_cursor_position((cursor_x, input_area.y + 1));
+
+    let accent = Style::new().fg(app.theme.accent);
+    let help_text = help_lines
+        .iter()
+        .map(|line| format!("  {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    frame.render_widget(Paragraph::new(help_text).style(accent), vertical[3]);
 }
 
 fn draw_theme_picker(frame: &mut Frame, app: &mut App) {

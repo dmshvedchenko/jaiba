@@ -66,7 +66,7 @@ pub fn handle_command_input(app: &mut App, key: KeyCode) {
         }
 
         KeyCode::Char(c) => {
-            app.command_buffer.push(c);
+            app.command_buffer.push(c.to_ascii_lowercase());
 
             match match_command(&app.command_buffer) {
                 CommandMatch::Exact(cmd) => {

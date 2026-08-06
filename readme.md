@@ -33,18 +33,14 @@ It's fast to open, keyboard-driven, and stores only what it needs:
 
 ## Features
 
-- **KDBX4 vaults**: reads and writes standard `.kdbx` files, so you can open the same
-  vault in KeePassXC, KeePassDX, or any other compatible client.
+- **KDBX4 vaults**: reads and writes standard `.kdbx` files, so you can open the same vault in KeePassXC, KeePassDX, or any other compatible client.
 - **Fuzzy search**: start typing on the index screen to filter entries by name or user.
-- **TOTP codes**: generates live 2FA codes from a stored seed or `otpauth://` URI and
-  copies them straight to your clipboard.
-- **Reuse warnings**: flags entries that share a password or username with another
-  entry, so you can spot weak spots at a glance.
-- **Auto-lock & clipboard clearing**: the vault locks itself after a period of
-  inactivity, and anything copied to the clipboard is cleared automatically.
+- **TOTP codes**: generates live 2FA codes from a stored seed or `otpauth://` URI and copies them straight to your clipboard.
+- **Reuse warnings**: flags entries that share a password or username with another entry, so you can spot weak spots at a glance.
+- **Auto-lock & clipboard clearing**: the vault locks itself after a period of inactivity, and anything copied to the clipboard is cleared automatically.
 - **Themeable**: ships with a default color scheme and supports custom themes.
-- **Change your master password**: from Settings, without needing to touch a file
-  manager or another app.
+- **Change your master password**: from Settings, without needing to touch a file manager or another app.
+- **Import from other vaults or exports**: pull entries in from another `.kdbx` file, or from a CSV/JSON export produced by another password manager.
 
 ## Installing
 
@@ -96,11 +92,11 @@ Commands are case-insensitive, so `:S` works the same as `:s`.
 
 ### Settings screen
 
-| Key              | Action                               |
-| ---------------- | ------------------------------------ |
-| `↑`/`↓`          | Navigate rows                        |
-| `Enter`          | Edit the selected field / pick theme |
-| `Esc`            | Back to the index screen             |
+| Key     | Action                               |
+| ------- | ------------------------------------ |
+| `↑`/`↓` | Navigate rows                        |
+| `Enter` | Edit the selected field / pick theme |
+| `Esc`   | Back to the index screen             |
 
 From Settings you can change the default vault path, auto-lock timeout, clipboard timeout, active theme, and the vault's master password (you'll be asked for the current password first, then the new one twice).
 

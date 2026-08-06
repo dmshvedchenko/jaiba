@@ -1,23 +1,30 @@
+use std::path::Path;
 use std::time::Duration;
 
 use crossterm::event::KeyCode;
 use keepass::DatabaseKey;
 
-use crate::app::{App, PasswordChangeStep, Screen};
+use crate::app::{App, ImportStep, PasswordChangeStep, Screen};
 use crate::config::save_config;
-use crate::db::{save_database, unlock_database};
+use crate::db::{Entry, calculate_warnings, save_database, unlock_database};
 use crate::theme::load_theme;
 use crate::util::expand_tilde;
 
-pub const ROW_COUNT: usize = 5;
+pub const ROW_COUNT: usize = 6;
 
 pub const DATABASE_ROW: usize = 0;
 pub const AUTO_LOCK_ROW: usize = 1;
 pub const CLIPBOARD_TIMEOUT_ROW: usize = 2;
 pub const THEME_ROW: usize = 3;
 pub const CHANGE_PASSWORD_ROW: usize = 4;
+pub const IMPORT_ROW: usize = 5;
 
 pub fn handle_settings_input(app: &mut App, key: KeyCode) {
+    if app.importing_database {
+        handle_import_input(app, key);
+        return;
+    }
+
     if app.changing_password {
         handle_change_password_input(app, key);
         return;
@@ -37,22 +44,14 @@ pub fn handle_settings_input(app: &mut App, key: KeyCode) {
         KeyCode::Down => {
             app.status = None;
             let selected = app.settings_state.selected().unwrap_or(0);
-            let next = if selected + 1 >= ROW_COUNT {
-                0
-            } else {
-                selected + 1
-            };
+            let next = if selected + 1 >= ROW_COUNT { 0 } else { selected + 1 };
             app.settings_state.select(Some(next));
         }
 
         KeyCode::Up => {
             app.status = None;
             let selected = app.settings_state.selected().unwrap_or(0);
-            let prev = if selected == 0 {
-                ROW_COUNT - 1
-            } else {
-                selected - 1
-            };
+            let prev = if selected == 0 { ROW_COUNT - 1 } else { selected - 1 };
             app.settings_state.select(Some(prev));
         }
 
@@ -78,6 +77,7 @@ fn activate_selected(app: &mut App) {
         CLIPBOARD_TIMEOUT_ROW => start_editing_clipboard_timeout(app),
         THEME_ROW => start_choosing_theme(app),
         CHANGE_PASSWORD_ROW => start_change_password(app),
+        IMPORT_ROW => start_import(app),
         _ => {}
     }
 }
@@ -287,6 +287,146 @@ fn commit_password_change(app: &mut App) {
     app.new_password_confirm.clear();
 }
 
+fn start_import(app: &mut App) {
+    reset_import_state(app);
+    app.importing_database = true;
+    app.status = None;
+}
+
+fn reset_import_state(app: &mut App) {
+    app.importing_database = false;
+    app.import_step = ImportStep::Path;
+    app.import_path_buffer.clear();
+    app.import_kdbx_password_buffer.clear();
+    app.pending_import_path = None;
+}
+
+fn cancel_import(app: &mut App) {
+    reset_import_state(app);
+    app.status = None;
+}
+
+fn handle_import_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Char(c) => {
+            app.status = None;
+            let limit = app.max_len.max(1);
+
+            let buffer = match app.import_step {
+                ImportStep::Path => &mut app.import_path_buffer,
+                ImportStep::KdbxPassword => &mut app.import_kdbx_password_buffer,
+            };
+
+            if buffer.len() < limit {
+                buffer.push(c);
+            }
+        }
+
+        KeyCode::Backspace => {
+            app.status = None;
+
+            let buffer = match app.import_step {
+                ImportStep::Path => &mut app.import_path_buffer,
+                ImportStep::KdbxPassword => &mut app.import_kdbx_password_buffer,
+            };
+
+            buffer.pop();
+        }
+
+        KeyCode::Enter => match app.import_step {
+            ImportStep::Path => confirm_import_path(app),
+            ImportStep::KdbxPassword => confirm_import_kdbx_password(app),
+        },
+
+        KeyCode::Esc => cancel_import(app),
+
+        _ => {}
+    }
+}
+
+fn confirm_import_path(app: &mut App) {
+    let raw = app.import_path_buffer.trim();
+
+    if raw.is_empty() {
+        app.status = Some("enter a file path".to_string());
+        return;
+    }
+
+    let path = expand_tilde(raw);
+
+    if !path.is_file() {
+        app.status = Some(format!("no file found at {}", path.display()));
+        return;
+    }
+
+    match crate::import::detect_format(&path) {
+        Ok(crate::import::ImportFormat::Kdbx) => {
+            app.pending_import_path = Some(path);
+            app.import_kdbx_password_buffer.clear();
+            app.import_step = ImportStep::KdbxPassword;
+            app.status = None;
+        }
+
+        Ok(crate::import::ImportFormat::Csv) => match crate::import::import_csv(&path) {
+            Ok(entries) => finish_import(app, entries, &path),
+            Err(err) => app.status = Some(format!("couldn't import: {err:#}")),
+        },
+
+        Ok(crate::import::ImportFormat::Json) => match crate::import::import_json(&path) {
+            Ok(entries) => finish_import(app, entries, &path),
+            Err(err) => app.status = Some(format!("couldn't import: {err:#}")),
+        },
+
+        Err(err) => app.status = Some(format!("{err:#}")),
+    }
+}
+
+fn confirm_import_kdbx_password(app: &mut App) {
+    let Some(path) = app.pending_import_path.clone() else {
+        cancel_import(app);
+        return;
+    };
+
+    match crate::import::import_kdbx(&path, &app.import_kdbx_password_buffer) {
+        Ok(entries) => finish_import(app, entries, &path),
+        Err(err) => {
+            app.status = Some(format!("{err:#}"));
+            app.import_kdbx_password_buffer.clear();
+        }
+    }
+}
+
+fn finish_import(app: &mut App, imported: Vec<Entry>, source: &Path) {
+    let count = imported.len();
+
+    for mut entry in imported {
+        entry.id = None;
+        app.entries.push(entry);
+    }
+
+    calculate_warnings(&mut app.entries);
+    app.refresh_filter();
+
+    let (Some(path), Some(key), Some(db)) = (
+        app.config.default_database.clone(),
+        app.db_key.clone(),
+        app.kdbx.as_mut(),
+    ) else {
+        app.status = Some(format!(
+            "imported {count} entries from {}, but couldn't save: database is locked",
+            source.display()
+        ));
+        reset_import_state(app);
+        return;
+    };
+
+    app.status = Some(match save_database(&path, &key, db, &mut app.entries) {
+        Ok(()) => format!("imported {count} entries from {}", source.display()),
+        Err(err) => format!("imported {count} entries, but failed to save: {err:#}"),
+    });
+
+    reset_import_state(app);
+}
 fn start_choosing_theme(app: &mut App) {
     if app.available_themes.is_empty() {
         app.status = Some("no themes found in ~/.config/jaiba/themes".to_string());
@@ -314,11 +454,7 @@ fn handle_theme_picker_input(app: &mut App, key: KeyCode) {
                 return;
             }
             let selected = app.theme_state.selected().unwrap_or(0);
-            let next = if selected + 1 >= count {
-                0
-            } else {
-                selected + 1
-            };
+            let next = if selected + 1 >= count { 0 } else { selected + 1 };
             app.theme_state.select(Some(next));
         }
 
@@ -327,11 +463,7 @@ fn handle_theme_picker_input(app: &mut App, key: KeyCode) {
                 return;
             }
             let selected = app.theme_state.selected().unwrap_or(0);
-            let prev = if selected == 0 {
-                count - 1
-            } else {
-                selected - 1
-            };
+            let prev = if selected == 0 { count - 1 } else { selected - 1 };
             app.theme_state.select(Some(prev));
         }
 

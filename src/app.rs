@@ -1,4 +1,5 @@
 use std::io;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use arboard::Clipboard;
@@ -38,6 +39,12 @@ pub enum PasswordChangeStep {
     ConfirmNewPassword,
 }
 
+#[derive(PartialEq, Eq)]
+pub enum ImportStep {
+    Path,
+    KdbxPassword,
+}
+
 pub struct App {
     pub screen: Screen,
     pub password: String,
@@ -72,6 +79,12 @@ pub struct App {
     pub current_password_buffer: String,
     pub new_password_buffer: String,
     pub new_password_confirm: String,
+
+    pub importing_database: bool,
+    pub import_step: ImportStep,
+    pub import_path_buffer: String,
+    pub import_kdbx_password_buffer: String,
+    pub pending_import_path: Option<PathBuf>,
 
     pub login_error: Option<String>,
 
@@ -166,6 +179,11 @@ fn maybe_auto_lock(app: &mut App) {
     app.current_password_buffer.clear();
     app.new_password_buffer.clear();
     app.new_password_confirm.clear();
+    app.importing_database = false;
+    app.import_step = ImportStep::Path;
+    app.import_path_buffer.clear();
+    app.import_kdbx_password_buffer.clear();
+    app.pending_import_path = None;
     app.screen = Screen::Login;
     app.login_error = Some("Locked after inactivity".to_string());
 }
@@ -190,6 +208,11 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         current_password_buffer: String::new(),
         new_password_buffer: String::new(),
         new_password_confirm: String::new(),
+        importing_database: false,
+        import_step: ImportStep::Path,
+        import_path_buffer: String::new(),
+        import_kdbx_password_buffer: String::new(),
+        pending_import_path: None,
         login_error: None,
         last_activity: Instant::now(),
         index_state: TableState::default().with_selected(Some(0)),

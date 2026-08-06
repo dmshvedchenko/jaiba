@@ -18,7 +18,9 @@ const THEME_PICKER_HELP_ITEMS: &[&str] = &["[↑↓] navigate", "[enter] apply",
 const CHANGE_PASSWORD_HELP_ITEMS: &[&str] = &["[enter] confirm", "[esc] cancel"];
 
 pub fn draw_settings(frame: &mut Frame, app: &mut App) {
-    if app.changing_password {
+    if app.importing_database {
+        draw_import(frame, app);
+    } else if app.changing_password {
         draw_change_password(frame, app);
     } else if app.choosing_theme {
         draw_theme_picker(frame, app);
@@ -119,6 +121,10 @@ fn draw_main_settings(frame: &mut Frame, app: &mut App) {
             "Change master password",
             Line::from(Span::styled("[enter] to change", placeholder)),
         ),
+        field(
+            "Import database",
+            Line::from(Span::styled("[enter] to import", placeholder)),
+        ),
     ];
 
     let list = List::new(items)
@@ -213,6 +219,107 @@ fn draw_change_password(frame: &mut Frame, app: &mut App) {
         | crate::app::PasswordChangeStep::ConfirmNewPassword => {
             "this re-encrypts your database file with the new password"
         }
+    };
+    let hint_text = app
+        .status
+        .clone()
+        .unwrap_or_else(|| default_hint.to_string());
+    let hint_style = if app.status.is_some() {
+        Style::new().fg(app.theme.error)
+    } else {
+        Style::new().fg(app.theme.warning)
+    };
+
+    let hint = Paragraph::new(hint_text)
+        .alignment(Alignment::Center)
+        .style(hint_style);
+
+    frame.render_widget(hint, hint_area);
+
+    let typed_len = buf.chars().count() as u16;
+    let inner_width = input_area.width - 1;
+    let cursor_x = input_area.x + (inner_width.saturating_sub(typed_len) / 2) + typed_len;
+    frame.set_cursor_position((cursor_x, input_area.y + 1));
+
+    let accent = Style::new().fg(app.theme.accent);
+    let help_text = help_lines
+        .iter()
+        .map(|line| format!("  {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    frame.render_widget(Paragraph::new(help_text).style(accent), vertical[3]);
+}
+
+const IMPORT_HELP_ITEMS: &[&str] = &["[enter] continue", "[esc] cancel"];
+
+fn draw_import(frame: &mut Frame, app: &mut App) {
+    let full_area = frame.area();
+
+    let help_width = full_area.width.saturating_sub(2);
+    let help_lines = wrap_help_items(IMPORT_HELP_ITEMS, help_width);
+    let help_height = help_lines.len() as u16;
+
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(3),
+            Constraint::Fill(1),
+            Constraint::Length(help_height),
+        ])
+        .split(full_area);
+
+    let input_row = vertical[1];
+
+    let horizontal = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Fill(1), Constraint::Length(60), Constraint::Fill(1)])
+        .split(input_row);
+
+    let input_area = horizontal[1];
+    app.max_len = (input_area.width - 2) as usize;
+
+    let masked = matches!(app.import_step, crate::app::ImportStep::KdbxPassword);
+
+    let title = match app.import_step {
+        crate::app::ImportStep::Path => " Import from file (.kdbx / .csv / .json) ",
+        crate::app::ImportStep::KdbxPassword => " Password for that vault ",
+    };
+
+    let buf = match app.import_step {
+        crate::app::ImportStep::Path => &app.import_path_buffer,
+        crate::app::ImportStep::KdbxPassword => &app.import_kdbx_password_buffer,
+    };
+
+    let display_text = if masked {
+        "•".repeat(buf.chars().count())
+    } else {
+        buf.clone()
+    };
+
+    let input = Paragraph::new(display_text)
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(app.theme.border))
+                .title(title),
+        );
+
+    frame.render_widget(input, input_area);
+
+    let hint_area = Rect {
+        x: input_area.x,
+        y: input_area.y + input_area.height,
+        width: input_area.width,
+        height: 1,
+    };
+
+    let default_hint = match app.import_step {
+        crate::app::ImportStep::Path => {
+            "only name, user, password, url, and totp are imported"
+        }
+        crate::app::ImportStep::KdbxPassword => "that file's own master password, not this vault's",
     };
     let hint_text = app
         .status

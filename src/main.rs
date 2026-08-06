@@ -2,6 +2,7 @@ mod app;
 mod clipboard;
 mod config;
 mod db;
+mod import;
 mod input;
 mod theme;
 mod ui;

@@ -1,6 +1,23 @@
 use std::path::PathBuf;
 
+fn strip_surrounding_quotes(path: &str) -> &str {
+    let bytes = path.as_bytes();
+
+    if bytes.len() >= 2 {
+        let first = bytes[0];
+        let last = bytes[bytes.len() - 1];
+
+        if (first == b'\'' && last == b'\'') || (first == b'"' && last == b'"') {
+            return &path[1..path.len() - 1];
+        }
+    }
+
+    path
+}
+
 pub fn expand_tilde(path: &str) -> PathBuf {
+    let path = strip_surrounding_quotes(path.trim());
+
     if let Some(rest) = path.strip_prefix("~/") {
         if let Ok(home) = std::env::var("HOME") {
             return PathBuf::from(home).join(rest);

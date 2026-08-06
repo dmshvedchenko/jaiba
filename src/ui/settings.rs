@@ -16,9 +16,12 @@ const NAV_HELP_ITEMS: &[&str] = &["[↑↓] navigate", "[enter] edit / choose th
 const FIELD_HELP_ITEMS: &[&str] = &["[enter] save", "[esc] cancel"];
 const THEME_PICKER_HELP_ITEMS: &[&str] = &["[↑↓] navigate", "[enter] apply", "[esc] cancel"];
 const CHANGE_PASSWORD_HELP_ITEMS: &[&str] = &["[enter] confirm", "[esc] cancel"];
+const EXPORT_HELP_ITEMS: &[&str] = &["[enter] continue", "[esc] cancel"];
 
 pub fn draw_settings(frame: &mut Frame, app: &mut App) {
-    if app.importing_database {
+    if app.exporting_database {
+        draw_export(frame, app);
+    } else if app.importing_database {
         draw_import(frame, app);
     } else if app.changing_password {
         draw_change_password(frame, app);
@@ -124,6 +127,10 @@ fn draw_main_settings(frame: &mut Frame, app: &mut App) {
         field(
             "Import database",
             Line::from(Span::styled("[enter] to import", placeholder)),
+        ),
+        field(
+            "Export database",
+            Line::from(Span::styled("[enter] to export", placeholder)),
         ),
     ];
 
@@ -338,6 +345,114 @@ fn draw_import(frame: &mut Frame, app: &mut App) {
     frame.render_widget(hint, hint_area);
 
     let typed_len = buf.chars().count() as u16;
+    let inner_width = input_area.width - 1;
+    let cursor_x = input_area.x + (inner_width.saturating_sub(typed_len) / 2) + typed_len;
+    frame.set_cursor_position((cursor_x, input_area.y + 1));
+
+    let accent = Style::new().fg(app.theme.accent);
+    let help_text = help_lines
+        .iter()
+        .map(|line| format!("  {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    frame.render_widget(Paragraph::new(help_text).style(accent), vertical[3]);
+}
+
+fn draw_export(frame: &mut Frame, app: &mut App) {
+    let full_area = frame.area();
+
+    let help_width = full_area.width.saturating_sub(2);
+    let help_lines = wrap_help_items(EXPORT_HELP_ITEMS, help_width);
+    let help_height = help_lines.len() as u16;
+
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(3),
+            Constraint::Fill(1),
+            Constraint::Length(help_height),
+        ])
+        .split(full_area);
+
+    let input_row = vertical[1];
+
+    let horizontal = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Fill(1), Constraint::Length(60), Constraint::Fill(1)])
+        .split(input_row);
+
+    let input_area = horizontal[1];
+    app.max_len = (input_area.width - 2) as usize;
+
+    let title = match app.export_step {
+        crate::app::ExportStep::Path => " Export to file (.kdbx / .csv / .json) ",
+        crate::app::ExportStep::Confirm => " Confirm export ",
+    };
+
+    let input = Paragraph::new(app.export_path_buffer.clone())
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(app.theme.border))
+                .title(title),
+        );
+
+    frame.render_widget(input, input_area);
+
+    let hint_area = Rect {
+        x: input_area.x,
+        y: input_area.y + input_area.height,
+        width: input_area.width,
+        height: 1,
+    };
+
+    let default_hint = match app.export_step {
+        crate::app::ExportStep::Path => {
+            "only name, user, password, url, and totp are exported".to_string()
+        }
+        crate::app::ExportStep::Confirm => {
+            let path = app.pending_export_path.as_deref();
+            let plaintext = path
+                .and_then(|p| crate::export::detect_format(p).ok())
+                .map(|f| {
+                    matches!(
+                        f,
+                        crate::export::ExportFormat::Csv | crate::export::ExportFormat::Json
+                    )
+                })
+                .unwrap_or(false);
+            let overwrite = path.map(|p| p.exists()).unwrap_or(false);
+
+            match (plaintext, overwrite) {
+                (true, true) => {
+                    "this overwrites an existing file with all passwords in PLAINTEXT — press enter to confirm".to_string()
+                }
+                (true, false) => {
+                    "this writes all passwords in PLAINTEXT to disk — press enter to confirm".to_string()
+                }
+                (false, true) => {
+                    "this overwrites an existing file — press enter to confirm".to_string()
+                }
+                (false, false) => "press enter to confirm".to_string(),
+            }
+        }
+    };
+    let hint_text = app.status.clone().unwrap_or(default_hint);
+    let hint_style = if app.status.is_some() {
+        Style::new().fg(app.theme.error)
+    } else {
+        Style::new().fg(app.theme.warning)
+    };
+
+    let hint = Paragraph::new(hint_text)
+        .alignment(Alignment::Center)
+        .style(hint_style);
+
+    frame.render_widget(hint, hint_area);
+
+    let typed_len = app.export_path_buffer.chars().count() as u16;
     let inner_width = input_area.width - 1;
     let cursor_x = input_area.x + (inner_width.saturating_sub(typed_len) / 2) + typed_len;
     frame.set_cursor_position((cursor_x, input_area.y + 1));

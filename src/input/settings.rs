@@ -4,13 +4,13 @@ use std::time::Duration;
 use crossterm::event::KeyCode;
 use keepass::DatabaseKey;
 
-use crate::app::{App, ImportStep, PasswordChangeStep, Screen};
+use crate::app::{App, ExportStep, ImportStep, PasswordChangeStep, Screen};
 use crate::config::save_config;
 use crate::db::{Entry, calculate_warnings, save_database, unlock_database};
 use crate::theme::load_theme;
 use crate::util::expand_tilde;
 
-pub const ROW_COUNT: usize = 6;
+pub const ROW_COUNT: usize = 7;
 
 pub const DATABASE_ROW: usize = 0;
 pub const AUTO_LOCK_ROW: usize = 1;
@@ -18,8 +18,14 @@ pub const CLIPBOARD_TIMEOUT_ROW: usize = 2;
 pub const THEME_ROW: usize = 3;
 pub const CHANGE_PASSWORD_ROW: usize = 4;
 pub const IMPORT_ROW: usize = 5;
+pub const EXPORT_ROW: usize = 6;
 
 pub fn handle_settings_input(app: &mut App, key: KeyCode) {
+    if app.exporting_database {
+        handle_export_input(app, key);
+        return;
+    }
+
     if app.importing_database {
         handle_import_input(app, key);
         return;
@@ -78,6 +84,7 @@ fn activate_selected(app: &mut App) {
         THEME_ROW => start_choosing_theme(app),
         CHANGE_PASSWORD_ROW => start_change_password(app),
         IMPORT_ROW => start_import(app),
+        EXPORT_ROW => start_export(app),
         _ => {}
     }
 }
@@ -427,6 +434,130 @@ fn finish_import(app: &mut App, imported: Vec<Entry>, source: &Path) {
 
     reset_import_state(app);
 }
+
+fn start_export(app: &mut App) {
+    reset_export_state(app);
+    app.exporting_database = true;
+    app.status = None;
+}
+
+fn reset_export_state(app: &mut App) {
+    app.exporting_database = false;
+    app.export_step = ExportStep::Path;
+    app.export_path_buffer.clear();
+    app.pending_export_path = None;
+}
+
+fn cancel_export(app: &mut App) {
+    reset_export_state(app);
+    app.status = None;
+}
+
+fn handle_export_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Char(c) => {
+            app.status = None;
+
+            if app.export_step == ExportStep::Path {
+                let limit = app.max_len.max(1);
+                if app.export_path_buffer.len() < limit {
+                    app.export_path_buffer.push(c);
+                }
+            }
+        }
+
+        KeyCode::Backspace => {
+            app.status = None;
+
+            if app.export_step == ExportStep::Path {
+                app.export_path_buffer.pop();
+            }
+        }
+
+        KeyCode::Enter => match app.export_step {
+            ExportStep::Path => confirm_export_path(app),
+            ExportStep::Confirm => do_export(app),
+        },
+
+        KeyCode::Esc => cancel_export(app),
+
+        _ => {}
+    }
+}
+
+fn confirm_export_path(app: &mut App) {
+    let raw = app.export_path_buffer.trim();
+
+    if raw.is_empty() {
+        app.status = Some("enter a file path".to_string());
+        return;
+    }
+
+    let path = expand_tilde(raw);
+
+    let format = match crate::export::detect_format(&path) {
+        Ok(format) => format,
+        Err(err) => {
+            app.status = Some(format!("{err:#}"));
+            return;
+        }
+    };
+
+    app.pending_export_path = Some(path.clone());
+
+    let plaintext = matches!(
+        format,
+        crate::export::ExportFormat::Csv | crate::export::ExportFormat::Json
+    );
+    let overwrite = path.exists();
+
+    if plaintext || overwrite {
+        app.export_step = ExportStep::Confirm;
+        app.status = None;
+    } else {
+        do_export(app);
+    }
+}
+
+fn do_export(app: &mut App) {
+    let Some(path) = app.pending_export_path.clone() else {
+        cancel_export(app);
+        return;
+    };
+
+    let format = match crate::export::detect_format(&path) {
+        Ok(format) => format,
+        Err(err) => {
+            app.status = Some(format!("{err:#}"));
+            reset_export_state(app);
+            return;
+        }
+    };
+
+    let count = app.entries.len();
+
+    let result = match format {
+        crate::export::ExportFormat::Kdbx => {
+            let (Some(key), Some(db)) = (app.db_key.clone(), app.kdbx.as_mut()) else {
+                app.status = Some("no unlocked database".to_string());
+                reset_export_state(app);
+                return;
+            };
+
+            save_database(&path, &key, db, &mut app.entries)
+        }
+        crate::export::ExportFormat::Csv => crate::export::export_csv(&path, &app.entries),
+        crate::export::ExportFormat::Json => crate::export::export_json(&path, &app.entries),
+    };
+
+    app.status = Some(match result {
+        Ok(()) => format!("exported {count} entries to {}", path.display()),
+        Err(err) => format!("couldn't export: {err:#}"),
+    });
+
+    reset_export_state(app);
+}
+
 fn start_choosing_theme(app: &mut App) {
     if app.available_themes.is_empty() {
         app.status = Some("no themes found in ~/.config/jaiba/themes".to_string());

@@ -45,6 +45,12 @@ pub enum ImportStep {
     KdbxPassword,
 }
 
+#[derive(PartialEq, Eq)]
+pub enum ExportStep {
+    Path,
+    Confirm,
+}
+
 pub struct App {
     pub screen: Screen,
     pub password: String,
@@ -85,6 +91,11 @@ pub struct App {
     pub import_path_buffer: String,
     pub import_kdbx_password_buffer: String,
     pub pending_import_path: Option<PathBuf>,
+
+    pub exporting_database: bool,
+    pub export_step: ExportStep,
+    pub export_path_buffer: String,
+    pub pending_export_path: Option<PathBuf>,
 
     pub login_error: Option<String>,
 
@@ -184,6 +195,10 @@ fn maybe_auto_lock(app: &mut App) {
     app.import_path_buffer.clear();
     app.import_kdbx_password_buffer.clear();
     app.pending_import_path = None;
+    app.exporting_database = false;
+    app.export_step = ExportStep::Path;
+    app.export_path_buffer.clear();
+    app.pending_export_path = None;
     app.screen = Screen::Login;
     app.login_error = Some("Locked after inactivity".to_string());
 }
@@ -213,6 +228,10 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         import_path_buffer: String::new(),
         import_kdbx_password_buffer: String::new(),
         pending_import_path: None,
+        exporting_database: false,
+        export_step: ExportStep::Path,
+        export_path_buffer: String::new(),
+        pending_export_path: None,
         login_error: None,
         last_activity: Instant::now(),
         index_state: TableState::default().with_selected(Some(0)),

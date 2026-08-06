@@ -34,17 +34,25 @@ pub fn handle_settings_input(app: &mut App, key: KeyCode) {
     }
 
     match key {
-        KeyCode::Down | KeyCode::Char('j') => {
+        KeyCode::Down => {
             app.status = None;
             let selected = app.settings_state.selected().unwrap_or(0);
-            let next = if selected + 1 >= ROW_COUNT { 0 } else { selected + 1 };
+            let next = if selected + 1 >= ROW_COUNT {
+                0
+            } else {
+                selected + 1
+            };
             app.settings_state.select(Some(next));
         }
 
-        KeyCode::Up | KeyCode::Char('k') => {
+        KeyCode::Up => {
             app.status = None;
             let selected = app.settings_state.selected().unwrap_or(0);
-            let prev = if selected == 0 { ROW_COUNT - 1 } else { selected - 1 };
+            let prev = if selected == 0 {
+                ROW_COUNT - 1
+            } else {
+                selected - 1
+            };
             app.settings_state.select(Some(prev));
         }
 
@@ -301,21 +309,29 @@ fn handle_theme_picker_input(app: &mut App, key: KeyCode) {
     let count = app.available_themes.len();
 
     match key {
-        KeyCode::Down | KeyCode::Char('j') => {
+        KeyCode::Down => {
             if count == 0 {
                 return;
             }
             let selected = app.theme_state.selected().unwrap_or(0);
-            let next = if selected + 1 >= count { 0 } else { selected + 1 };
+            let next = if selected + 1 >= count {
+                0
+            } else {
+                selected + 1
+            };
             app.theme_state.select(Some(next));
         }
 
-        KeyCode::Up | KeyCode::Char('k') => {
+        KeyCode::Up => {
             if count == 0 {
                 return;
             }
             let selected = app.theme_state.selected().unwrap_or(0);
-            let prev = if selected == 0 { count - 1 } else { selected - 1 };
+            let prev = if selected == 0 {
+                count - 1
+            } else {
+                selected - 1
+            };
             app.theme_state.select(Some(prev));
         }
 

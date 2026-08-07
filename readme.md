@@ -46,6 +46,19 @@ It's fast to open, keyboard-driven, and stores only what it needs:
 
 Requires a recent Rust toolchain (edition 2024, so **Rust 1.85+**).
 
+Default themes are embedded in the binary and get written to
+`~/.config/jaiba/themes/` automatically the first time you run `jaiba`, so
+any of the install methods below give you a fully working setup with no
+extra copying required.
+
+### From crates.io
+
+```sh
+cargo install jaiba
+```
+
+### From source, with cargo
+
 ```sh
 cargo install --path .
 ```
@@ -54,6 +67,64 @@ Or, to run it without installing:
 
 ```sh
 cargo run
+```
+
+### From source, with install.sh
+
+```sh
+git clone https://github.com/pomboverso/jaiba
+cd jaiba
+./install.sh              # installs to ~/.local/bin, no sudo needed
+# PREFIX=/usr/local ./install.sh   # or install system-wide
+
+./install.sh --uninstall  # to remove it later (your config/vault are kept)
+```
+
+### Debian / Ubuntu (.deb)
+
+```sh
+cargo install cargo-deb
+cargo deb
+sudo dpkg -i target/debian/jaiba_*.deb
+```
+
+### Fedora / RHEL / openSUSE (.rpm)
+
+```sh
+cargo install cargo-generate-rpm
+cargo build --release
+strip target/release/jaiba   # optional, cargo-generate-rpm expects a stripped binary by default
+cargo generate-rpm
+sudo rpm -i target/generate-rpm/jaiba-*.rpm
+```
+
+### Arch Linux (AUR)
+
+A minimal `PKGBUILD` for an AUR submission:
+
+```bash
+pkgname=jaiba
+pkgver=2026.1.0
+pkgrel=1
+pkgdesc="Terminal password manager built on the KeePass (.kdbx) format"
+arch=('x86_64' 'aarch64')
+url="https://github.com/pomboverso/jaiba"
+license=('GPL3')
+depends=('gcc-libs')
+makedepends=('cargo')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/pomboverso/jaiba/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  cargo build --release --locked
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
+  install -Dm644 license.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
 ```
 
 ## Getting started

@@ -204,6 +204,8 @@ fn maybe_auto_lock(app: &mut App) {
 }
 
 pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
+    let _ = crate::theme::ensure_default_themes();
+
     let config = load_config().unwrap_or_default();
     let theme = load_theme(config.theme.as_deref()).unwrap_or_default();
 

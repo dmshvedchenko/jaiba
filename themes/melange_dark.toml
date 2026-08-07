@@ -1,0 +1,26 @@
+name = "Mélange Dark"
+author = "Savq"
+version = 1
+
+[colors]
+background = "#161413"
+text = "#ECE1D7"
+
+border = "#4D463E"
+header = "#EBC06B"
+accent = "#EBC06E"
+
+warning = "#E49B5D"
+error = "#B65C60"
+success = "#8CBBA1"
+
+selection_fg = "#161413"
+selection_bg = "#F4D18D"
+
+claws = "#D49A3A"
+claws_light = "#EBC06B"
+claws_shadow = "#9A6728"
+
+shell = "#322B24"
+shell_light = "#4D463E"
+shell_shadow = "#221C18"

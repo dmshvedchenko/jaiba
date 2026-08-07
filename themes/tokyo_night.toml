@@ -1,0 +1,26 @@
+name = "Tokyo Night"
+author = "Enkia"
+version = 1
+
+[colors]
+background = "#1A1B26"
+text = "#C0CAF5"
+
+border = "#2E324D"
+header = "#7AA2F6"
+accent = "#7AA2F7"
+
+warning = "#FF9E64"
+error = "#F7768E"
+success = "#9ECE6A"
+
+selection_fg = "#1A1B26"
+selection_bg = "#A3C1FF"
+
+claws = "#437db6"
+claws_light = "#64a0d2"
+claws_shadow = "#2d5c91"
+
+shell = "#567468"
+shell_light = "#789488"
+shell_shadow = "#3a524a"

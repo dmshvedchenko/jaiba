@@ -117,6 +117,54 @@ fn parse_hex(hex: &str) -> anyhow::Result<Color> {
     Ok(Color::Rgb(r, g, b))
 }
 
+const DEFAULT_THEMES: &[(&str, &str)] = &[
+    (
+        "catppuccin_latte.toml",
+        include_str!("../themes/catppuccin_latte.toml"),
+    ),
+    (
+        "catppuccin_mocha.toml",
+        include_str!("../themes/catppuccin_mocha.toml"),
+    ),
+    ("dracula.toml", include_str!("../themes/dracula.toml")),
+    ("mako.toml", include_str!("../themes/mako.toml")),
+    (
+        "melange_dark.toml",
+        include_str!("../themes/melange_dark.toml"),
+    ),
+    (
+        "pomboverso.toml",
+        include_str!("../themes/pomboverso.toml"),
+    ),
+    ("rama.toml", include_str!("../themes/rama.toml")),
+    ("teyin.toml", include_str!("../themes/teyin.toml")),
+    (
+        "tokyo_night.toml",
+        include_str!("../themes/tokyo_night.toml"),
+    ),
+];
+
+/// Makes sure `~/.config/jaiba/themes/` exists and has the built-in themes
+/// in it. Only ever *adds* files that are missing — never overwrites a file
+/// that's already there, so a user's edited or custom theme is never
+/// clobbered. Safe to call on every startup.
+pub fn ensure_default_themes() -> anyhow::Result<()> {
+    let dir = expand_tilde("~/.config/jaiba/themes");
+
+    fs::create_dir_all(&dir).with_context(|| format!("couldn't create {}", dir.display()))?;
+
+    for (filename, contents) in DEFAULT_THEMES {
+        let path = dir.join(filename);
+
+        if !path.exists() {
+            fs::write(&path, contents)
+                .with_context(|| format!("couldn't write {}", path.display()))?;
+        }
+    }
+
+    Ok(())
+}
+
 pub fn load_theme(name: Option<&str>) -> anyhow::Result<Theme> {
     let name = name.ok_or_else(|| anyhow::anyhow!("no theme set in config.toml"))?;
 

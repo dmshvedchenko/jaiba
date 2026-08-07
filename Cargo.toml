@@ -5,6 +5,8 @@ edition = "2024"
 description = "Password manager"
 authors = ["Pombo <https://github.com/pomboverso>"]
 license = "GPL-3.0"
+repository = "https://github.com/pomboverso/jaiba"
+readme = "readme.md"
 
 [dependencies]
 ratatui = "0.30.2"
@@ -17,3 +19,24 @@ anyhow = "1.0.104"
 toml = "1.1.4"
 keepass = { version = "0.13.20", features = ["save_kdbx4", "totp"] }
 chrono = "0.4.45"
+
+[package.metadata.deb]
+maintainer = "Pombo <https://github.com/pomboverso>"
+copyright = "2026, Pombo"
+license-file = ["license.md", "0"]
+extended-description = """\
+Jaiba is a terminal password manager built on the KeePass (.kdbx) file \
+format, so your vault stays compatible with the wider KeePass ecosystem."""
+depends = "$auto"
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/jaiba", "usr/bin/", "755"],
+    ["readme.md", "usr/share/doc/jaiba/README", "644"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/jaiba", dest = "/usr/bin/jaiba", mode = "755" },
+    { source = "readme.md", dest = "/usr/share/doc/jaiba/README", mode = "644" },
+]

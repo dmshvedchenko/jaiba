@@ -1,0 +1,26 @@
+name = "Catppuccin Mocha"
+author = "Pocco"
+version = 1
+
+[colors]
+background = "#1E1E2E"
+text = "#CDD6F4"
+
+border = "#585B70"
+header = "#B4BEFE"
+accent = "#89B4FA"
+
+warning = "#F9E2AF"
+error = "#F38BA8"
+success = "#A6E3A1"
+
+selection_fg = "#1E1E2E"
+selection_bg = "#DDBBFF"
+
+claws = "#89B4FA"
+claws_light = "#B4BEFE"
+claws_shadow = "#585B70"
+
+shell = "#45475A"
+shell_light = "#585B70"
+shell_shadow = "#313244"

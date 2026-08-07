@@ -1,0 +1,26 @@
+name = "Teyin"
+author = "isotjs"
+version = 1
+
+[colors]
+background = "#0E181A"
+text = "#EAE6DF"
+
+border = "#28484D"
+header = "#7A9495"
+accent = "#3A9DA0"
+
+warning = "#C77D4D"
+error = "#B83A2D"
+success = "#4DA8AC"
+
+selection_fg = "#0E181A"
+selection_bg = "#6BC1C4"
+
+claws = "#3A9DA0"
+claws_light = "#6A9FCF"
+claws_shadow = "#3F7268"
+
+shell = "#1E383D"
+shell_light = "#28484D"
+shell_shadow = "#162A2E"

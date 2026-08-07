@@ -1,0 +1,26 @@
+name = "Mako"
+author = "Pombo"
+version = 1
+
+[colors]
+background = "#141417"
+text = "#CCCCCC"
+
+border = "#2E324D"
+header = "#878787"
+accent = "#459984"
+
+warning = "#DCD07C"
+error = "#DC6364"
+success = "#ABD68E"
+
+selection_fg = "#141417"
+selection_bg = "#5DB89F"
+
+claws = "#459984"
+claws_light = "#71ACC7"
+claws_shadow = "#4A6E3A"
+
+shell = "#24313B"
+shell_light = "#2E324D"
+shell_shadow = "#1F1F29"

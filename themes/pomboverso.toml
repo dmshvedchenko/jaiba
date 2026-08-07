@@ -1,0 +1,26 @@
+name = "Pomboverso"
+author = "Pombo"
+version = 1
+
+[colors]
+background = "#2E2C42"
+text = "#ECE3F6"
+
+border = "#6C489B"
+header = "#6E6580"
+accent = "#B78ED7"
+
+warning = "#EC7CA7"
+error = "#E081D8"
+success = "#B7AFD1"
+
+selection_fg = "#2E2C42"
+selection_bg = "#EC7CA7"
+
+claws = "#B78ED7"
+claws_light = "#E081D8"
+claws_shadow = "#6C489B"
+
+shell = "#342A44"
+shell_light = "#6E6580"
+shell_shadow = "#2C2336"

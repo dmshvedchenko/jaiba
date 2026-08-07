@@ -1,0 +1,26 @@
+name = "Catppuccin Latte"
+author = "Pocco"
+version = 1
+
+[colors]
+background = "#EFF1F5"
+text = "#4C4F69"
+
+border = "#BCC0CD"
+header = "#7287FD"
+accent = "#1E66F5"
+
+warning = "#FE640B"
+error = "#D20F39"
+success = "#40A02B"
+
+selection_fg = "#EFF1F5"
+selection_bg = "#A16CF5"
+
+claws = "#1E66F5"
+claws_light = "#04A5E5"
+claws_shadow = "#8CCB9A"
+
+shell = "#BCC0CC"
+shell_light = "#BCC0CD"
+shell_shadow = "#CCD0DA"

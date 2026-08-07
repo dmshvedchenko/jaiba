@@ -1,0 +1,26 @@
+name = "Rama"
+author = "Pombo"
+version = 1
+
+[colors]
+background = "#0E190E"
+text = "#CBDECD"
+
+border = "#3A4D2E"
+header = "#8DE285"
+accent = "#45995A"
+
+warning = "#DCD07C"
+error = "#DC6364"
+success = "#ABD68D"
+
+selection_fg = "#0E190E"
+selection_bg = "#C4E7AD"
+
+claws = "#45995A"
+claws_light = "#7CCF8E"
+claws_shadow = "#4D7A4E"
+
+shell = "#2D3B24"
+shell_light = "#3A4D2E"
+shell_shadow = "#1F2920"

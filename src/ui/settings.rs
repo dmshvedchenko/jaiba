@@ -7,9 +7,7 @@ use ratatui::{
 };
 
 use crate::app::App;
-use crate::input::settings::{
-    AUTO_LOCK_ROW, CHANGE_PASSWORD_ROW, CLIPBOARD_TIMEOUT_ROW, DATABASE_ROW,
-};
+use crate::input::settings::{AUTO_LOCK_ROW, CLIPBOARD_TIMEOUT_ROW, DATABASE_ROW};
 use crate::util::wrap_help_items;
 
 const NAV_HELP_ITEMS: &[&str] = &["[↑↓] navigate", "[enter] edit / choose theme", "[esc] back"];
@@ -182,7 +180,11 @@ fn draw_change_password(frame: &mut Frame, app: &mut App) {
 
     let horizontal = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Fill(1), Constraint::Length(50), Constraint::Fill(1)])
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(50),
+            Constraint::Fill(1),
+        ])
         .split(input_row);
 
     let input_area = horizontal[1];
@@ -280,7 +282,11 @@ fn draw_import(frame: &mut Frame, app: &mut App) {
 
     let horizontal = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Fill(1), Constraint::Length(60), Constraint::Fill(1)])
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(60),
+            Constraint::Fill(1),
+        ])
         .split(input_row);
 
     let input_area = horizontal[1];
@@ -323,9 +329,7 @@ fn draw_import(frame: &mut Frame, app: &mut App) {
     };
 
     let default_hint = match app.import_step {
-        crate::app::ImportStep::Path => {
-            "only name, user, password, url, and totp are imported"
-        }
+        crate::app::ImportStep::Path => "only name, user, password, url, and totp are imported",
         crate::app::ImportStep::KdbxPassword => "that file's own master password, not this vault's",
     };
     let hint_text = app
@@ -379,7 +383,11 @@ fn draw_export(frame: &mut Frame, app: &mut App) {
 
     let horizontal = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Fill(1), Constraint::Length(60), Constraint::Fill(1)])
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(60),
+            Constraint::Fill(1),
+        ])
         .split(input_row);
 
     let input_area = horizontal[1];

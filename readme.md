@@ -31,13 +31,6 @@ It's fast to open, keyboard-driven, and stores only what it needs:
 
 ## Installing
 
-Prebuilt packages need nothing extra. Building from source (crates.io, `cargo install --path .`, or `install.sh`) requires a recent Rust toolchain (edition 2024, so **Rust 1.85+**).
-
-Default themes are embedded in the binary and get written to
-`~/.config/jaiba/themes/` automatically the first time you run `jaiba`, so
-any of the install methods below give you a fully working setup with no
-extra copying required.
-
 ### Prebuilt packages (recommended)
 
 Grab the file for your system from the [latest release](https://github.com/pomboverso/jaiba/releases/latest).
@@ -47,23 +40,6 @@ Grab the file for your system from the [latest release](https://github.com/pombo
 
 ```sh
 cargo install jaiba
-```
-
-Or, to run it without installing:
-
-```sh
-cargo run
-```
-
-### From source, with install.sh
-
-```sh
-git clone https://github.com/pomboverso/jaiba
-cd jaiba
-./install.sh              # installs to ~/.local/bin, no sudo needed
-# PREFIX=/usr/local ./install.sh   # or install system-wide
-
-./install.sh --uninstall  # to remove it later (your config/vault are kept)
 ```
 
 ## Getting started

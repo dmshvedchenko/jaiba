@@ -1,6 +1,6 @@
 [package]
 name = "jaiba"
-version = "2026.1.0"
+version = "2026.2.0"
 edition = "2024"
 description = "Password manager"
 authors = ["Pombo <https://github.com/pomboverso>"]
@@ -20,6 +20,9 @@ toml = "1.1.4"
 keepass = { version = "0.13.20", features = ["save_kdbx4", "totp"] }
 chrono = "0.4.45"
 
+[profile.release]
+strip = true
+
 [package.metadata.deb]
 maintainer = "Pombo <https://github.com/pomboverso>"
 copyright = "2026, Pombo"
@@ -33,10 +36,38 @@ priority = "optional"
 assets = [
     ["target/release/jaiba", "usr/bin/", "755"],
     ["readme.md", "usr/share/doc/jaiba/README", "644"],
+    ["assets/jaiba.desktop", "usr/share/applications/jaiba.desktop", "644"],
+    ["assets/jaiba.svg", "usr/share/icons/hicolor/scalable/apps/jaiba.svg", "644"],
+    ["assets/icon_16x16.png", "usr/share/icons/hicolor/16x16/apps/jaiba.png", "644"],
+    ["assets/icon_22x22.png", "usr/share/icons/hicolor/22x22/apps/jaiba.png", "644"],
+    ["assets/icon_24x24.png", "usr/share/icons/hicolor/24x24/apps/jaiba.png", "644"],
+    ["assets/icon_32x32.png", "usr/share/icons/hicolor/32x32/apps/jaiba.png", "644"],
+    ["assets/icon_48x48.png", "usr/share/icons/hicolor/48x48/apps/jaiba.png", "644"],
+    ["assets/icon_64x64.png", "usr/share/icons/hicolor/64x64/apps/jaiba.png", "644"],
+    ["assets/icon_72x72.png", "usr/share/icons/hicolor/72x72/apps/jaiba.png", "644"],
+    ["assets/icon_96x96.png", "usr/share/icons/hicolor/96x96/apps/jaiba.png", "644"],
+    ["assets/icon_128x128.png", "usr/share/icons/hicolor/128x128/apps/jaiba.png", "644"],
+    ["assets/icon_192x192.png", "usr/share/icons/hicolor/192x192/apps/jaiba.png", "644"],
+    ["assets/icon_256x256.png", "usr/share/icons/hicolor/256x256/apps/jaiba.png", "644"],
+    ["assets/icon_512x512.png", "usr/share/icons/hicolor/512x512/apps/jaiba.png", "644"],
 ]
 
 [package.metadata.generate-rpm]
 assets = [
     { source = "target/release/jaiba", dest = "/usr/bin/jaiba", mode = "755" },
     { source = "readme.md", dest = "/usr/share/doc/jaiba/README", mode = "644" },
+    { source = "assets/jaiba.desktop", dest = "/usr/share/applications/jaiba.desktop", mode = "644" },
+    { source = "assets/jaiba.svg", dest = "/usr/share/icons/hicolor/scalable/apps/jaiba.svg", mode = "644" },
+    { source = "assets/icon_16x16.png", dest = "/usr/share/icons/hicolor/16x16/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_22x22.png", dest = "/usr/share/icons/hicolor/22x22/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_24x24.png", dest = "/usr/share/icons/hicolor/24x24/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_32x32.png", dest = "/usr/share/icons/hicolor/32x32/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_48x48.png", dest = "/usr/share/icons/hicolor/48x48/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_64x64.png", dest = "/usr/share/icons/hicolor/64x64/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_72x72.png", dest = "/usr/share/icons/hicolor/72x72/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_96x96.png", dest = "/usr/share/icons/hicolor/96x96/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_128x128.png", dest = "/usr/share/icons/hicolor/128x128/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_192x192.png", dest = "/usr/share/icons/hicolor/192x192/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_256x256.png", dest = "/usr/share/icons/hicolor/256x256/apps/jaiba.png", mode = "644" },
+    { source = "assets/icon_512x512.png", dest = "/usr/share/icons/hicolor/512x512/apps/jaiba.png", mode = "644" },
 ]

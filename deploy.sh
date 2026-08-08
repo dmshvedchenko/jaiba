@@ -24,6 +24,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+SHORT_VERSION="$(printf '%s' "$VERSION" | cut -d. -f1,2)"
 ARCH="$(uname -m)"
 DIST_DIR="$ROOT_DIR/dist"
 TOOLS_DIR="$ROOT_DIR/.deploy-tools"
@@ -31,6 +32,28 @@ APPDIR="$ROOT_DIR/target/AppDir"
 
 BIN_NAME="jaiba"
 ICON_SIZES="16 22 24 32 48 64 72 96 128 192 256 512"
+
+# Output filename pattern: jaiba_<major.minor>_<arch>.<ext>
+# e.g. jaiba_2026.1_amd64.deb, jaiba_2026.1_x86_64.rpm, jaiba_2026.1_x86_64.AppImage
+# lowercase, underscores only (extension keeps AppImage's conventional casing).
+dist_name() {
+    # $1 = arch, $2 = extension
+    printf '%s_%s_%s.%s' "$BIN_NAME" "$SHORT_VERSION" "$1" "$2"
+}
+
+# Rename the most recently modified file matching a glob in $DIST_DIR to $2.
+rename_latest() {
+    # $1 = glob (e.g. "*.deb"), $2 = target filename
+    local built target
+    built="$(ls -t "$DIST_DIR"/$1 2>/dev/null | head -1)"
+    [ -n "$built" ] || { warn "no file matching '$1' found in $DIST_DIR to rename"; return 1; }
+
+    target="$DIST_DIR/$2"
+    if [ "$built" != "$target" ]; then
+        mv -f "$built" "$target"
+    fi
+    printf '%s' "$target"
+}
 
 log()  { printf '\033[1;34m==>\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33m!! \033[0m%s\n' "$1" >&2; }
@@ -56,7 +79,10 @@ build_deb() {
 
     log "Building .deb package..."
     cargo deb --no-build --output "$DIST_DIR"
-    log "deb done -> $DIST_DIR"
+
+    deb_arch="$(command -v dpkg >/dev/null 2>&1 && dpkg --print-architecture 2>/dev/null || echo amd64)"
+    out="$(rename_latest '*.deb' "$(dist_name "$deb_arch" deb)")"
+    log "deb done -> $out"
 }
 
 # ---------------------------------------------------------------------------
@@ -70,7 +96,9 @@ build_rpm() {
 
     log "Building .rpm package..."
     cargo generate-rpm --output "$DIST_DIR/"
-    log "rpm done -> $DIST_DIR"
+
+    out="$(rename_latest '*.rpm' "$(dist_name "$ARCH" rpm)")"
+    log "rpm done -> $out"
 }
 
 # ---------------------------------------------------------------------------
@@ -133,7 +161,7 @@ EOF
     chmod 755 "$APPDIR/AppRun"
 
     log "Running appimagetool..."
-    OUT="$DIST_DIR/Jaiba-${VERSION}-${ARCH}.AppImage"
+    OUT="$DIST_DIR/$(dist_name "$ARCH" AppImage)"
     ARCH="$ARCH" "$APPIMAGETOOL" "$APPDIR" "$OUT"
     chmod 755 "$OUT"
     log "AppImage done -> $OUT"

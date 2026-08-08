@@ -31,23 +31,22 @@ It's fast to open, keyboard-driven, and stores only what it needs:
 
 ## Installing
 
-Requires a recent Rust toolchain (edition 2024, so **Rust 1.85+**).
+Prebuilt packages need nothing extra. Building from source (crates.io, `cargo install --path .`, or `install.sh`) requires a recent Rust toolchain (edition 2024, so **Rust 1.85+**).
 
 Default themes are embedded in the binary and get written to
 `~/.config/jaiba/themes/` automatically the first time you run `jaiba`, so
 any of the install methods below give you a fully working setup with no
 extra copying required.
 
+### Prebuilt packages (recommended)
+
+Grab the file for your system from the [latest release](https://github.com/pomboverso/jaiba/releases/latest).
+
+
 ### From crates.io
 
 ```sh
 cargo install jaiba
-```
-
-### From source, with cargo
-
-```sh
-cargo install --path .
 ```
 
 Or, to run it without installing:
@@ -65,24 +64,6 @@ cd jaiba
 # PREFIX=/usr/local ./install.sh   # or install system-wide
 
 ./install.sh --uninstall  # to remove it later (your config/vault are kept)
-```
-
-### Debian / Ubuntu (.deb)
-
-```sh
-cargo install cargo-deb
-cargo deb
-sudo dpkg -i target/debian/jaiba_*.deb
-```
-
-### Fedora / RHEL / openSUSE (.rpm)
-
-```sh
-cargo install cargo-generate-rpm
-cargo build --release
-strip target/release/jaiba   # optional, cargo-generate-rpm expects a stripped binary by default
-cargo generate-rpm
-sudo rpm -i target/generate-rpm/jaiba-*.rpm
 ```
 
 ## Getting started
@@ -176,6 +157,16 @@ Pick one up from Settings → Theme, or set the `theme` key in `config.toml` dir
 - Changing the master password re-encrypts the whole vault in place, and requires entering the _current_ password first — Jaiba won't let anyone with terminal access quietly swap the password without proving they already know it.
 - The clipboard is cleared automatically after `clipboard_timeout` seconds, but only if it still holds the value Jaiba copied (so it won't stomp on something else you copied in the meantime).
 - The app locks itself after `auto_lock` seconds of inactivity, clearing decrypted entries and the master password from memory.
+
+## Releasing / packaging
+
+For maintainers cutting a release — builds the `.deb`, `.rpm`, and `.AppImage` and syncs the AUR `PKGBUILD`, dropping everything in `./dist/`:
+
+```sh
+./deploy.sh
+```
+
+Run `./deploy.sh` with no arguments to build everything, or `deb` / `rpm` / `appimage` / `aur` to build just one. See the comments at the top of `deploy.sh` for per-target requirements.
 
 ## License
 

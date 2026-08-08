@@ -9,7 +9,7 @@ license = "GPL-3.0-or-later"
 repository = "https://github.com/pomboverso/jaiba"
 homepage = "https://github.com/pomboverso/jaiba"
 readme = "readme.md"
-keywords = ["password-manager", "keepass", "kdbx", "tui", "totp", "foss", "open-source"]
+keywords = ["password-manager", "keepass", "tui", "foss", "open-source"]
 categories = ["command-line-utilities"]
 exclude = [
     "assets/icon_*.png",

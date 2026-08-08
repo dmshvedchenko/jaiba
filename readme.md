@@ -1,25 +1,6 @@
 # Jaiba
 
-```
-         ███                  ███
-        ███                    ███
-       ███   █              █   ███
-      ███  ██                ██  ███
-      █████                    █████
- ██    ██          █  █          ██    ██
-███     ██         █  █         ██     ███
-████     ██   ██████████████   ██     ████
-  ████     ████████████████████     ████
-    ████  ██████████████████████  ████
-       ████████████████████████████
-          ██████████████████████
-       ████████████████████████████
-     ███  ██████████████████████  ███
-    ██   ██  ████████████████  ██   ██
-     █  ██    ██          ██    ██   █
-         █   ██            ██    █
-              █            █
-```
+![Index Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/2.png)
 
 Jaiba is a terminal password manager built on top of the [KeePass](https://keepass.info/)
 (`.kdbx`) file format, so your vault stays compatible with the wider KeePass ecosystem.
@@ -30,6 +11,16 @@ It's fast to open, keyboard-driven, and stores only what it needs:
 - Password
 - TOTP (two-factor codes)
 - URL
+
+## Screenshots
+
+![Login Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/1.png)
+
+![Themes Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/3.png)
+
+![Edit Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/4.png)
+
+![Melange Login Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/5.png)
 
 ## Features
 

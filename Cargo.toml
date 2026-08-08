@@ -17,6 +17,7 @@ exclude = [
     "assets/icon-256.png",
     "assets/puma.svg",
     "assets/createIcon.sh",
+    "assets/screenshots/",
     ".deploy-tools/",
     "dist/",
     ".tmp",

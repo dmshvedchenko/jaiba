@@ -87,31 +87,19 @@ sudo rpm -i target/generate-rpm/jaiba-*.rpm
 
 ### Arch Linux (AUR)
 
-A minimal `PKGBUILD` for an AUR submission:
+The [`packaging/aur/PKGBUILD`](packaging/aur/PKGBUILD) in this repo is kept in sync with each
+release (`./deploy.sh aur` updates its `pkgver`/`sha256sums`). To build it locally:
 
 ```bash
-pkgname=jaiba
-pkgver=2026.1.0
-pkgrel=1
-pkgdesc="Terminal password manager built on the KeePass (.kdbx) format"
-arch=('x86_64' 'aarch64')
-url="https://github.com/pomboverso/jaiba"
-license=('GPL3')
-depends=('gcc-libs')
-makedepends=('cargo')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/pomboverso/jaiba/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+git clone https://github.com/pomboverso/jaiba
+cd jaiba/packaging/aur
+makepkg -si
+```
 
-build() {
-  cd "$pkgname-$pkgver"
-  cargo build --release --locked
-}
+Once published to the AUR as `jaiba`, you'll be able to install it with your AUR helper of choice, e.g.:
 
-package() {
-  cd "$pkgname-$pkgver"
-  install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
-  install -Dm644 license.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-}
+```bash
+paru -S jaiba
 ```
 
 ## Getting started

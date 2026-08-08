@@ -2,11 +2,26 @@
 name = "jaiba"
 version = "2026.2.0"
 edition = "2024"
-description = "Password manager"
+rust-version = "1.85"
+description = "A terminal password manager for KeePass (.kdbx) vaults"
 authors = ["Pombo <https://github.com/pomboverso>"]
-license = "GPL-3.0"
+license = "GPL-3.0-or-later"
 repository = "https://github.com/pomboverso/jaiba"
+homepage = "https://github.com/pomboverso/jaiba"
 readme = "readme.md"
+keywords = ["password-manager", "keepass", "kdbx", "tui", "totp", "foss", "open-source"]
+categories = ["command-line-utilities"]
+exclude = [
+    "assets/icon_*.png",
+    "assets/icon.png",
+    "assets/icon-256.png",
+    "assets/puma.svg",
+    "assets/createIcon.sh",
+    "assets/screenshots/",
+    ".deploy-tools/",
+    "dist/",
+    ".tmp",
+]
 
 [dependencies]
 ratatui = "0.30.2"

@@ -17,7 +17,7 @@ const NAV_HELP_ITEMS: &[&str] = &[
     "[enter] edit field",
     "[v] toggle visibility",
     "[d] delete entry",
-    "[esc] save & close",
+    "[esc] close",
 ];
 
 const FIELD_HELP_ITEMS: &[&str] = &["[enter] save field", "[esc] cancel"];

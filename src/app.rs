@@ -60,10 +60,12 @@ pub struct App {
     pub edit_state: ListState,
     pub reveal_password: bool,
     pub edit_entry: Option<Entry>,
+    pub edit_original: Option<Entry>,
     pub edit_target: Option<usize>,
     pub editing_field: bool,
     pub field_buffer: String,
     pub confirm_delete: bool,
+    pub confirm_exit: bool,
     pub entries: Vec<Entry>,
     pub filtered: Vec<usize>,
     pub kdbx: Option<Database>,
@@ -173,10 +175,12 @@ fn maybe_auto_lock(app: &mut App) {
     app.kdbx = None;
     app.db_key = None;
     app.edit_entry = None;
+    app.edit_original = None;
     app.edit_target = None;
     app.editing_field = false;
     app.field_buffer.clear();
     app.confirm_delete = false;
+    app.confirm_exit = false;
     app.reveal_password = false;
     app.available_themes.clear();
     app.settings_state.select(None);
@@ -240,10 +244,12 @@ pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<
         edit_state: ListState::default(),
         reveal_password: false,
         edit_entry: None,
+        edit_original: None,
         edit_target: None,
         editing_field: false,
         field_buffer: String::new(),
         confirm_delete: false,
+        confirm_exit: false,
         entries: Vec::new(),
         filtered: Vec::new(),
         kdbx: None,

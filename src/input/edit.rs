@@ -12,13 +12,18 @@ pub fn handle_edit_input(app: &mut App, key: KeyCode) {
         return;
     }
 
+    if app.confirm_exit {
+        handle_exit_confirmation(app, key);
+        return;
+    }
+
     if app.confirm_delete {
         handle_delete_confirmation(app, key);
         return;
     }
 
     match key {
-        KeyCode::Esc => close_edit(app),
+        KeyCode::Esc => request_close_edit(app),
 
         KeyCode::Enter => start_editing_field(app),
 
@@ -107,6 +112,45 @@ fn commit_field(app: &mut App) {
     app.editing_field = false;
 }
 
+fn request_close_edit(app: &mut App) {
+    if has_unsaved_changes(app) {
+        app.confirm_exit = true;
+        app.status = Some("Save changes? [y] yes  [n] no".to_string());
+    } else {
+        close_edit(app);
+    }
+}
+
+fn has_unsaved_changes(app: &App) -> bool {
+    let (Some(entry), Some(original)) = (app.edit_entry.as_ref(), app.edit_original.as_ref())
+    else {
+        return false;
+    };
+
+    entry.name != original.name
+        || entry.user != original.user
+        || entry.password != original.password
+        || entry.url != original.url
+        || entry.totp != original.totp
+}
+
+fn handle_exit_confirmation(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Char('y') | KeyCode::Char('Y') => {
+            app.confirm_exit = false;
+            close_edit(app);
+        }
+
+        KeyCode::Char('n') | KeyCode::Char('N') => {
+            app.confirm_exit = false;
+            reset_edit_state(app);
+            app.status = Some("Changes discarded".to_string());
+        }
+
+        _ => {}
+    }
+}
+
 fn close_edit(app: &mut App) {
     save_edit(app);
     reset_edit_state(app);
@@ -114,10 +158,12 @@ fn close_edit(app: &mut App) {
 
 fn reset_edit_state(app: &mut App) {
     app.edit_entry = None;
+    app.edit_original = None;
     app.edit_target = None;
     app.editing_field = false;
     app.field_buffer.clear();
     app.confirm_delete = false;
+    app.confirm_exit = false;
     app.reveal_password = false;
     app.edit_state.select(None);
     app.screen = Screen::Index;

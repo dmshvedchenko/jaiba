@@ -104,10 +104,12 @@ fn execute_command(app: &mut App, cmd: Command) {
 
 fn add_entry(app: &mut App) {
     app.edit_entry = Some(Entry::default());
+    app.edit_original = Some(Entry::default());
     app.edit_target = None;
     app.edit_state.select(Some(0));
     app.reveal_password = false;
     app.confirm_delete = false;
+    app.confirm_exit = false;
     app.screen = crate::app::Screen::Edit;
 }
 
@@ -123,10 +125,12 @@ pub fn preview_entry(app: &mut App) {
     };
 
     app.edit_entry = Some(entry.clone());
+    app.edit_original = Some(entry.clone());
     app.edit_target = Some(entry_idx);
     app.edit_state.select(Some(0));
     app.reveal_password = false;
     app.confirm_delete = false;
+    app.confirm_exit = false;
     app.screen = crate::app::Screen::Edit;
 }
 

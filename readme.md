@@ -136,13 +136,13 @@ Pick one up from Settings → Theme, or set the `theme` key in `config.toml` dir
 
 ## Releasing / packaging
 
-For maintainers cutting a release — builds the `.deb`, `.rpm`, and `.AppImage` and syncs the AUR `PKGBUILD`, dropping everything in `./dist/`:
+For maintainers cutting a release — builds the `.deb`, `.rpm`, and `.AppImage`, dropping everything in `./dist/`:
 
 ```sh
 ./deploy.sh
 ```
 
-Run `./deploy.sh` with no arguments to build everything, or `deb` / `rpm` / `appimage` / `aur` to build just one. See the comments at the top of `deploy.sh` for per-target requirements.
+Run `./deploy.sh` with no arguments to build everything, or `deb` / `rpm` / `appimage` to build just one. See the comments at the top of `deploy.sh` for per-target requirements.
 
 ## License
 

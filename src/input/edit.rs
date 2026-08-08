@@ -117,7 +117,7 @@ fn request_close_edit(app: &mut App) {
         app.confirm_exit = true;
         app.status = Some("Save changes? [y] yes  [n] no".to_string());
     } else {
-        close_edit(app);
+        reset_edit_state(app);
     }
 }
 

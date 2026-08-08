@@ -1,6 +1,6 @@
 # Jaiba
 
-![Index Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/2.png)
+![Login Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/1.png)
 
 Jaiba is a terminal password manager built on top of the [KeePass](https://keepass.info/)
 (`.kdbx`) file format, so your vault stays compatible with the wider KeePass ecosystem.
@@ -12,16 +12,6 @@ It's fast to open, keyboard-driven, and stores only what it needs:
 - TOTP (two-factor codes)
 - URL
 
-## Screenshots
-
-![Login Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/1.png)
-
-![Themes Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/3.png)
-
-![Edit Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/4.png)
-
-![Melange Login Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/5.png)
-
 ## Features
 
 - **KDBX4 vaults**: reads and writes standard `.kdbx` files, so you can open the same vault in KeePassXC, KeePassDX, or any other compatible client.
@@ -32,6 +22,12 @@ It's fast to open, keyboard-driven, and stores only what it needs:
 - **Themeable**: ships with a default color scheme and supports custom themes.
 - **Change your master password**: from Settings, without needing to touch a file manager or another app.
 - **Import from other vaults or exports**: pull entries in from another `.kdbx` file, or from a CSV/JSON export produced by another password manager.
+
+## Screenshots
+
+![Index Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/2.png)
+
+![Edit Screen](https://raw.githubusercontent.com/pomboverso/jaiba/HEAD/assets/screenshots/4.png)
 
 ## Installing
 
@@ -212,4 +208,4 @@ Pick one up from Settings → Theme, or set the `theme` key in `config.toml` dir
 
 ## License
 
-GPL-3.0
+GPL-3.0-or-later

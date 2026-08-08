@@ -85,23 +85,6 @@ cargo generate-rpm
 sudo rpm -i target/generate-rpm/jaiba-*.rpm
 ```
 
-### Arch Linux (AUR)
-
-The [`packaging/aur/PKGBUILD`](packaging/aur/PKGBUILD) in this repo is kept in sync with each
-release (`./deploy.sh aur` updates its `pkgver`/`sha256sums`). To build it locally:
-
-```bash
-git clone https://github.com/pomboverso/jaiba
-cd jaiba/packaging/aur
-makepkg -si
-```
-
-Once published to the AUR as `jaiba`, you'll be able to install it with your AUR helper of choice, e.g.:
-
-```bash
-paru -S jaiba
-```
-
 ## Getting started
 
 On first launch, if no vault is found at the configured path, Jaiba will:

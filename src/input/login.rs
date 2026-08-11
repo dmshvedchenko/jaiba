@@ -134,7 +134,7 @@ fn finish_create_database(app: &mut App) {
         .clone()
         .unwrap_or_else(default_new_database_path);
 
-    match create_database(&path, &app.password) {
+    match create_database(&path, &app.password, app.config.keyfile.as_deref()) {
         Ok((db, key, entries)) => {
             app.config.default_database = Some(path.clone());
             let save_result = save_config(&app.config);
@@ -172,7 +172,7 @@ fn attempt_unlock(app: &mut App) {
         return;
     };
 
-    match unlock_database(&path, &app.password) {
+    match unlock_database(&path, &app.password, app.config.keyfile.as_deref()) {
         Ok((db, key, mut entries)) => {
             calculate_warnings(&mut entries);
             app.entries = entries;

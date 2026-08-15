@@ -52,8 +52,8 @@ pub fn database_missing(app: &App) -> bool {
 }
 
 fn handle_missing_database_input(app: &mut App, key: KeyCode) {
-    match key {
-        KeyCode::Char('n') | KeyCode::Char('N') => start_create_database(app),
+    match crate::input::normalize_shortcut(key) {
+        KeyCode::Char('n') => start_create_database(app),
 
         KeyCode::Esc => {
             app.should_quit = true;

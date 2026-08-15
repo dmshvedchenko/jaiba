@@ -51,7 +51,7 @@ fn match_command(buffer: &str) -> CommandMatch {
 }
 
 pub fn handle_command_input(app: &mut App, key: KeyCode) {
-    match key {
+    match crate::input::normalize_shortcut(key) {
         KeyCode::Esc => {
             app.command_mode = false;
             app.command_buffer.clear();
@@ -66,7 +66,7 @@ pub fn handle_command_input(app: &mut App, key: KeyCode) {
         }
 
         KeyCode::Char(c) => {
-            app.command_buffer.push(c.to_ascii_lowercase());
+            app.command_buffer.push(c);
 
             match match_command(&app.command_buffer) {
                 CommandMatch::Exact(cmd) => {

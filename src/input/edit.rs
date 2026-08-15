@@ -22,7 +22,7 @@ pub fn handle_edit_input(app: &mut App, key: KeyCode) {
         return;
     }
 
-    match key {
+    match crate::input::normalize_shortcut(key) {
         KeyCode::Esc => request_close_edit(app),
 
         KeyCode::Enter => start_editing_field(app),
@@ -135,16 +135,21 @@ fn has_unsaved_changes(app: &App) -> bool {
 }
 
 fn handle_exit_confirmation(app: &mut App, key: KeyCode) {
-    match key {
-        KeyCode::Char('y') | KeyCode::Char('Y') => {
+    match crate::input::normalize_shortcut(key) {
+        KeyCode::Char('y') => {
             app.confirm_exit = false;
             close_edit(app);
         }
 
-        KeyCode::Char('n') | KeyCode::Char('N') => {
+        KeyCode::Char('n') => {
             app.confirm_exit = false;
             reset_edit_state(app);
             app.status = Some("Changes discarded".to_string());
+        }
+
+        KeyCode::Esc => {
+            app.confirm_exit = false;
+            app.status = None;
         }
 
         _ => {}
@@ -232,7 +237,7 @@ fn handle_delete_confirmation(app: &mut App, key: KeyCode) {
     app.confirm_delete = false;
     app.status = None;
 
-    if let KeyCode::Char('y') | KeyCode::Char('Y') = key {
+    if let KeyCode::Char('y') = crate::input::normalize_shortcut(key) {
         delete_current_entry(app);
     }
 }

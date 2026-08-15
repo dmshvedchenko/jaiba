@@ -210,7 +210,16 @@ fn maybe_auto_lock(app: &mut App) {
 pub fn run(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
     let _ = crate::theme::ensure_default_themes();
 
-    let config = load_config().unwrap_or_default();
+    let mut config = load_config().unwrap_or_default();
+
+    if config.default_database.is_none() {
+        let default_path = crate::util::default_new_database_path();
+        if default_path.is_file() {
+            config.default_database = Some(default_path);
+            let _ = crate::config::save_config(&config);
+        }
+    }
+
     let theme = load_theme(config.theme.as_deref()).unwrap_or_default();
 
     let mut app = App {

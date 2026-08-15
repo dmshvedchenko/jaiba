@@ -134,6 +134,20 @@ fn finish_create_database(app: &mut App) {
         .clone()
         .unwrap_or_else(default_new_database_path);
 
+    if path.is_file() {
+        app.config.default_database = Some(path.clone());
+        let _ = save_config(&app.config);
+
+        app.new_db_confirm.clear();
+        app.creating_database = false;
+        app.confirming_new_db_password = false;
+        app.login_error = Some(format!(
+            "A vault already exists at {}. Press Enter to try unlocking it with this password.",
+            path.display()
+        ));
+        return;
+    }
+
     match create_database(&path, &app.password) {
         Ok((db, key, entries)) => {
             app.config.default_database = Some(path.clone());

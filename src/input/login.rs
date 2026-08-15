@@ -52,8 +52,8 @@ pub fn database_missing(app: &App) -> bool {
 }
 
 fn handle_missing_database_input(app: &mut App, key: KeyCode) {
-    match key {
-        KeyCode::Char('n') | KeyCode::Char('N') => start_create_database(app),
+    match crate::input::normalize_shortcut(key) {
+        KeyCode::Char('n') => start_create_database(app),
 
         KeyCode::Esc => {
             app.should_quit = true;
@@ -135,6 +135,21 @@ fn finish_create_database(app: &mut App) {
         .unwrap_or_else(default_new_database_path);
 
     match create_database(&path, &app.password, app.config.keyfile.as_deref()) {
+    if path.is_file() {
+        app.config.default_database = Some(path.clone());
+        let _ = save_config(&app.config);
+
+        app.new_db_confirm.clear();
+        app.creating_database = false;
+        app.confirming_new_db_password = false;
+        app.login_error = Some(format!(
+            "A vault already exists at {}. Press Enter to try unlocking it with this password.",
+            path.display()
+        ));
+        return;
+    }
+
+    match create_database(&path, &app.password) {
         Ok((db, key, entries)) => {
             app.config.default_database = Some(path.clone());
             let save_result = save_config(&app.config);
